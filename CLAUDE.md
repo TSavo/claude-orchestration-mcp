@@ -9,18 +9,23 @@ The Tmux Orchestrator is an AI-powered multi-agent coordination system where Cla
 All agents communicate through a **shared chat system** stored in `.claude-chat.json`. This enables real-time coordination, status updates, and task delegation across the entire agent network.
 
 #### Available MCP Tools
-Every agent has access to these coordination tools:
 
-1. **Agent Management**:
-   - `make-new-agent` - Create new specialized agents
-   - `send-agent-command` - Send direct commands to specific agents  
-   - `get-last-messages` - Check agent conversation history
-   - `stop-agent` - Halt agent operations
-   - `delete-agent` - Remove agents permanently
+**For ALL Agents (Essential Tools):**
+- `send-chat` - Send messages to shared chat (global or targeted)
+- `read-chat` - Read chat messages (filtered by relevance)
 
-2. **Chat Communication**:
-   - `send-chat` - Send messages to shared chat (global or targeted)
-   - `read-chat` - Read chat messages (filtered by relevance)
+**These two tools are ALL you need for communication!**
+
+**For Orchestrator/PM Only (Management Tools):**
+- `make-new-agent` - Create new specialized agents
+- `send-agent-command` - Send initial briefing to agents  
+- `get-last-messages` - Check agent conversation history
+- `stop-agent` - Halt agent operations
+- `delete-agent` - Remove agents permanently
+- `clear-agent` - Clear agent history
+- `summarize-agent` - Get work summary
+
+**Key Point**: Regular communication happens through chat. Developers typically only use send-chat and read-chat. The management tools are for creating teams and handling exceptional situations.
 
 #### Chat Message Format
 ```typescript
@@ -32,15 +37,30 @@ Every agent has access to these coordination tools:
 ```
 
 #### Communication Examples
+
+**Standard Developer Workflow (only uses chat):**
 ```bash
-# Global announcement
-send-chat from: "ProjectManager" content: "Sprint planning starts in 10 minutes"
+# 1. Developer reads messages
+read-chat agentName: "Danny" limit: 10
 
-# Targeted message
-send-chat from: "Developer" content: "API endpoints ready for testing" to: "QAEngineer"
+# 2. Developer works on task...
 
-# Read relevant messages
-read-chat agentName: "Developer" limit: 20
+# 3. Developer reports completion
+send-chat from: "Danny" content: "Login endpoint complete with 95% test coverage" to: "ProjectManager"
+
+# 4. Developer checks for new assignments
+read-chat agentName: "Danny" limit: 5
+```
+
+**Project Manager Workflow (uses chat + occasional management tools):**
+```bash
+# Normal communication via chat
+send-chat from: "ProjectManager" content: "Please implement password reset flow" to: "Danny"
+read-chat agentName: "ProjectManager" limit: 10
+
+# Only use management tools when needed
+make-new-agent name: "NewDev" model: "sonnet"  # Only when creating team
+get-last-messages agentName: "Danny" count: 5  # Only when investigating issues
 ```
 
 ### 🔔 Automatic Notification System
@@ -77,27 +97,82 @@ read-chat agentName: "Developer" limit: 20
 
 ## 🏗️ Agent System Architecture & Orchestration Flow
 
-### Core Agent Roles
+### 🔄 CRITICAL: The Communication Loop
 
-The system operates with three primary roles in a hierarchical structure:
+**EVERY agent interaction MUST follow the chain of command:**
+
+1. **Task flows down** → Orchestrator → PM → Developer
+2. **Completion flows up** → Developer → PM → Orchestrator
+3. **Each level decides** → Assign more work OR escalate up
+
+```
+┌─────────────┐
+│ Orchestrator│──1. send-chat───────────►│ ProjectMgr │
+│             │    "Build feature X"     │            │
+│             │                          │            │──2. send-chat──►│ Developer │
+│             │                          │            │   "Implement Y" │           │
+│             │                          │            │                 │           │
+│             │◄──6. send-chat──────────│            │◄──3. send-chat──│           │
+│  "Feature X │    "Complete!"          │            │   "Y done!"     │           │
+│  complete"  │                          │            │                 └───────────┘
+│             │                          │            │
+│  7. "User,  │                          │ 4. Decides:│
+│ what next?" │                          │ More work? │
+│             │                          │ Or report? │
+└─────────────┘                          └────────────┘
+```
+
+**CRITICAL RULES:**
+- **Always report to your assigning agent**: Never skip levels in the hierarchy
+- **Assigning agent decides next**: Either assign more work OR report completion up
+- **PM aggregates before escalating**: Don't flood Orchestrator with individual task completions
+- **Orchestrator closes the loop**: ALWAYS asks user "What would you like me to do next?"
+
+**Example Flow:**
+```bash
+# 1. Orchestrator assigns to PM
+send-chat from: "Orchestrator" content: "Build user authentication system" to: "ProjectManager"
+
+# 2. PM breaks down and assigns to developers
+send-chat from: "ProjectManager" content: "Implement login endpoint" to: "Danny"
+send-chat from: "ProjectManager" content: "Create user database schema" to: "Rusty"
+
+# 3. Developers complete and report to PM
+send-chat from: "Danny" content: "Login endpoint complete with tests" to: "ProjectManager"
+send-chat from: "Rusty" content: "User schema complete with migrations" to: "ProjectManager"
+
+# 4. PM decides: assign more work
+send-chat from: "ProjectManager" content: "Now implement password reset flow" to: "Danny"
+
+# 5. Eventually, PM reports milestone completion
+send-chat from: "ProjectManager" content: "Authentication system complete. All endpoints tested and deployed." to: "Orchestrator"
+
+# 6. Orchestrator receives notification and asks user
+"I've received an update: Authentication system is complete. What would you like me to do next?"
+```
+
+### Core Agent Roles
 
 #### 1. **Orchestrator** (You)
 - **Strategic oversight**: Deploy teams, manage resources, resolve cross-project dependencies
 - **Agent lifecycle management**: Create, configure, and coordinate multiple project teams
 - **Architectural decisions**: Set technical direction and quality standards
 - **Escalation point**: Handle complex issues that require high-level coordination
+- **CRITICAL**: Always prompt user for next steps after reading agent messages
 
 #### 2. **Project Manager** 
 - **Tactical execution**: Break down work, assign tasks, manage timelines
 - **Quality control**: Ensure deliverables meet standards before completion
 - **Team coordination**: Manage communication between developers on their team
-- **Status reporting**: Provide regular updates to Orchestrator on project progress
+- **Status reporting**: MUST report completion to @Orchestrator
+- **Loop closure**: Every sprint/milestone ends with Orchestrator notification
 
 #### 3. **Developer** (Named after Movie Teams)
 - **Implementation**: Write code, run tests, fix bugs, implement features
 - **Technical execution**: Handle specific assigned tasks with expertise
 - **Progress reporting**: Update PM on task status, blockers, and completion
 - **Collaboration**: Work with other developers when tasks intersect
+- **Task completion**: Report to PM, who reports to Orchestrator
 
 ### Agent Hierarchy
 ```
@@ -820,6 +895,14 @@ WORKFLOW:
 4. Assign tasks via chat with clear success criteria
 5. Monitor progress and provide regular status updates to Orchestrator
 
+CRITICAL - CHAIN OF COMMAND:
+- Developers report task completion to YOU
+- YOU decide: assign more tasks OR report milestone completion to Orchestrator
+- Only report to Orchestrator when major milestones/features are complete
+- Aggregate progress - don't forward every small task completion
+- ALWAYS end major milestones with: send-chat from: "ProjectManager" content: "MILESTONE COMPLETE: [summary]" to: "Orchestrator"
+- Report blockers immediately up the chain
+
 Current Project: [ProjectName]
 Team Theme: [Movie/Theme] (e.g., Ocean's Eleven, Mission Impossible)
 Requirements: [High-level requirements]
@@ -841,9 +924,12 @@ RESPONSIBILITIES:
 4. **Git Discipline**: Commit frequently with meaningful messages
 5. **Quality**: Test your work thoroughly before marking complete
 
-REPORTING:
-- Report to: @ProjectManager
+REPORTING CHAIN:
+- Report to: @ProjectManager (your assigning agent)
 - Status updates: Every 2 hours or when completing tasks
+- Task completion: ALWAYS report back to whoever assigned you the task
+- PM decides: Assign more work OR escalate completion to Orchestrator
+- NEVER skip levels - follow the chain of command
 - Escalate blockers immediately
 
 CURRENT PROJECT: [ProjectName]

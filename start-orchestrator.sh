@@ -66,6 +66,11 @@ sleep 0.5
 tmux send-keys -t $SESSION:$WINDOW Enter
 sleep 0.5
 
+tmux send-keys -t $SESSION:$WINDOW "CRITICAL: You communicate with agents through chat like everyone else. Use send-chat to message agents. When agents complete tasks, they MUST report to you. After reading agent messages with read-chat, ALWAYS ask the user 'What would you like me to do next?' to close the communication loop."
+sleep 0.5
+tmux send-keys -t $SESSION:$WINDOW Enter
+sleep 0.5
+
 tmux send-keys -t $SESSION:$WINDOW "Start by reading CLAUDE.md to understand the full system capabilities, then tell me what you'd like to orchestrate."
 sleep 0.5
 tmux send-keys -t $SESSION:$WINDOW Enter
