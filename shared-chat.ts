@@ -2,6 +2,10 @@
 
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export interface ChatMessage {
   id: string;
@@ -51,22 +55,65 @@ class SharedChatStore {
     this.chatMessages.push(message);
     await this.saveChat();
     
-    // If this is a targeted message, notify the target agent
-    if (to && this.agentRegistry) {
-      const prompt = `You have a new message from ${from} in the shared chat. They said: "${content}". Please check the shared chat using read-chat and respond appropriately.`;
-      
-      const targetAgent = this.agentRegistry.getAgentByName(to);
-      if (targetAgent) {
-        // Use the agent's query method - it will queue if busy, or process if idle
-        targetAgent.query(prompt);
-      } else {
-        console.log(`Could not deliver message to ${to} - agent not found in registry`);
+    // If this is a targeted message, notify the target
+    if (to) {
+      // Special handling for Orchestrator
+      if (to === 'Orchestrator') {
+        // Notify the orchestrator via tmux send-keys
+        await this.notifyOrchestrator(from, content);
+      } else if (this.agentRegistry) {
+        // Normal agent notification
+        const prompt = `You have a new message from ${from} in the shared chat. They said: "${content}". Please check the shared chat using read-chat and respond appropriately.`;
+        
+        const targetAgent = this.agentRegistry.getAgentByName(to);
+        if (targetAgent) {
+          // Use the agent's query method - it will queue if busy, or process if idle
+          targetAgent.query(prompt);
+        } else {
+          console.log(`Could not deliver message to ${to} - agent not found in registry`);
+        }
       }
+    } else if (content.includes('@Orchestrator')) {
+      // Handle @mentions of Orchestrator in broadcast messages
+      await this.notifyOrchestrator(from, content);
     }
     
     return message;
   }
 
+
+  private async notifyOrchestrator(from: string, content: string): Promise<void> {
+    try {
+      // Check if orchestrator session exists
+      const sessionFile = join(process.cwd(), '.orchestrator-session');
+      let orchestratorSession = 'orchestrator:0'; // default
+      
+      try {
+        orchestratorSession = await fs.readFile(sessionFile, 'utf-8');
+        orchestratorSession = orchestratorSession.trim();
+      } catch (e) {
+        // Use default if file doesn't exist
+        console.log('Using default orchestrator session: orchestrator:0');
+      }
+      
+      // Inject read-chat command to orchestrator
+      const command = `read-chat agentName: 'Orchestrator' limit: 10`;
+      
+      // Send the command
+      await execAsync(`tmux send-keys -t ${orchestratorSession} "${command}"`);
+      
+      // Wait for UI to register (same timing as send-claude-message.sh)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Send Enter
+      await execAsync(`tmux send-keys -t ${orchestratorSession} Enter`);
+      
+      console.log(`Notified orchestrator in ${orchestratorSession} about message from ${from}`);
+    } catch (error) {
+      console.error('Failed to notify orchestrator via tmux:', error);
+      console.log('Make sure orchestrator is running in tmux session');
+    }
+  }
 
   private isNotificationMessage(content: string): boolean {
     return content.includes('SPEC_COMPLETE:') || 

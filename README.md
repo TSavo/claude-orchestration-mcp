@@ -42,7 +42,26 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 
 ### 3. Start Orchestrating!
 
-Restart Claude Desktop and you'll have access to these MCP tools:
+#### Option A: Standard Claude Desktop
+Restart Claude Desktop and you'll have access to the MCP tools. Agents can send messages to you, but you'll need to manually check with `read-chat`.
+
+#### Option B: Enhanced Orchestrator Mode (Recommended)
+For automatic notifications when agents message you:
+
+```bash
+# Start orchestrator in tmux
+./start-orchestrator.sh
+
+# This will:
+# 1. Launch Claude in a tmux session
+# 2. Brief it with orchestration context
+# 3. Enable automatic notifications from agents
+
+# To connect to your orchestrator:
+tmux attach -t orchestrator
+```
+
+When agents send messages to @Orchestrator, you'll automatically be prompted to check them!
 
 ## 📦 Available MCP Tools
 
