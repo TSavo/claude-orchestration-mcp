@@ -335,6 +335,12 @@ export class ClaudeSession extends EventEmitter {
       }
     }
 
+    // Add universal session ending reminder to EVERY prompt
+    if (this.config.agentName) {
+      const sessionEndingInstruction = this.generateUniversalSessionEndingReminder(this.config.agentName);
+      finalPrompt = finalPrompt + sessionEndingInstruction;
+    }
+
     // Include recent conversation history for context
     const recentHistory = this.history.slice(-6); // Last 3 exchanges
     
@@ -531,6 +537,39 @@ If you end a session without using send-chat to report to your supervisor, THE E
 First, read your role documentation, then use read-chat to check for any existing messages directed at you.\n\n`;
 
     return briefing;
+  }
+
+  private generateUniversalSessionEndingReminder(agentName: string): string {
+    const isOrchestrator = agentName.toLowerCase().includes('orchestrator');
+    const isProjectManager = agentName.toLowerCase().includes('manager') || agentName.toLowerCase().includes('pm');
+    
+    if (isOrchestrator) {
+      return `
+
+🚨 MANDATORY SESSION ENDING PROTOCOL:
+You MUST end EVERY interaction (even follow-up questions) by asking the user: "What would you like me to do next?"
+NEVER end ANY response without this question - it breaks the entire multi-agent system and strands all team members.
+This applies to ALL responses: answers, status updates, questions, clarifications - EVERYTHING.
+This is NON-NEGOTIABLE and REQUIRED for system stability.`;
+    } else if (isProjectManager) {
+      return `
+
+🚨 MANDATORY SESSION ENDING PROTOCOL:
+You MUST end EVERY interaction (even follow-up questions) with this exact format:
+send-chat from: "${agentName}" content: "[your response/update]. NEXT: [what you plan to do]. Any new instructions?" to: "Orchestrator"
+NEVER end ANY response without this send-chat command - it breaks the multi-agent system and leaves developers stranded.
+This applies to ALL responses: status updates, questions, clarifications, work reports - EVERYTHING.
+This is NON-NEGOTIABLE and REQUIRED for workflow continuity.`;
+    } else {
+      return `
+
+🚨 MANDATORY SESSION ENDING PROTOCOL:
+You MUST end EVERY interaction (even follow-up questions) with this exact format:
+send-chat from: "${agentName}" content: "[your response/update]. NEXT: [what you plan to do]. Any new assignments?" to: "ProjectManager"
+NEVER end ANY response without this send-chat command - it breaks the workflow and strands your team.
+This applies to ALL responses: progress reports, questions, clarifications, work updates - EVERYTHING.
+This is NON-NEGOTIABLE and REQUIRED for team coordination.`;
+    }
   }
 
   private checkForTargetedMessages(agentName: string): string[] {
