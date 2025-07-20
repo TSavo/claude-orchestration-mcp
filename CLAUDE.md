@@ -99,28 +99,35 @@ get-last-messages agentName: "Danny" count: 5  # Only when investigating issues
 
 ### 🔄 CRITICAL: The Communication Loop
 
-**EVERY agent interaction MUST follow the chain of command:**
+**The chain ALWAYS follows: Orchestrator → PM → Developer → PM → Orchestrator**
 
-1. **Task flows down** → Orchestrator → PM → Developer
-2. **Completion flows up** → Developer → PM → Orchestrator
-3. **Each level decides** → Assign more work OR escalate up
+But the PM acts as a **work buffer** - multiple cycles with developers before reporting back:
 
 ```
 ┌─────────────┐
-│ Orchestrator│──1. send-chat───────────►│ ProjectMgr │
-│             │    "Build feature X"     │            │
-│             │                          │            │──2. send-chat──►│ Developer │
-│             │                          │            │   "Implement Y" │           │
-│             │                          │            │                 │           │
-│             │◄──6. send-chat──────────│            │◄──3. send-chat──│           │
-│  "Feature X │    "Complete!"          │            │   "Y done!"     │           │
-│  complete"  │                          │            │                 └───────────┘
+│ Orchestrator│──1. "Build feature X"───►│ ProjectMgr │
 │             │                          │            │
-│  7. "User,  │                          │ 4. Decides:│
-│ what next?" │                          │ More work? │
-│             │                          │ Or report? │
-└─────────────┘                          └────────────┘
+│             │                          │  ┌────────┼──2. "Implement login"──►│Developer│
+│             │                          │  │        │◄──3. "Login done"────────│         │
+│             │                          │  │  Loop  │──4. "Now do logout"──────►│         │
+│             │                          │  │ many   │◄──5. "Logout done"───────│         │
+│             │                          │  │ times  │──6. "Add password reset"─►│         │
+│             │                          │  └────────┼◄──7. "Reset done"────────│         │
+│             │                          │            │                          └─────────┘
+│             │◄──8. "Feature X complete"│            │
+│  "Feature X │     All parts done!     │  PM aggregates all work
+│  complete"  │                          │  before reporting back
+│             │                          └────────────┘
+│  9. "User,  │
+│ what next?" │
+└─────────────┘
 ```
+
+**Key Points:**
+- **PM is a buffer**: Works with developers through MANY iterations
+- **PM aggregates**: Only reports to Orchestrator when meaningful progress is made
+- **Not every task bubbles up**: PM handles the back-and-forth with developers
+- **Orchestrator gets summaries**: Not individual task completions
 
 **CRITICAL RULES:**
 - **Always report to your assigning agent**: Never skip levels in the hierarchy
@@ -130,26 +137,38 @@ get-last-messages agentName: "Danny" count: 5  # Only when investigating issues
 
 **Example Flow:**
 ```bash
-# 1. Orchestrator assigns to PM
-send-chat from: "Orchestrator" content: "Build user authentication system" to: "ProjectManager"
+# 1. Orchestrator assigns major feature
+send-chat from: "Orchestrator" content: "Build complete user authentication system" to: "ProjectManager"
 
-# 2. PM breaks down and assigns to developers
-send-chat from: "ProjectManager" content: "Implement login endpoint" to: "Danny"
-send-chat from: "ProjectManager" content: "Create user database schema" to: "Rusty"
+# 2-10. PM works with developers (MANY iterations, not all shown)
+send-chat from: "ProjectManager" content: "Create user database schema" to: "Danny"
+send-chat from: "Danny" content: "Schema complete" to: "ProjectManager"
+send-chat from: "ProjectManager" content: "Now add email field and indexes" to: "Danny"
+send-chat from: "Danny" content: "Updated with email and indexes" to: "ProjectManager"
 
-# 3. Developers complete and report to PM
-send-chat from: "Danny" content: "Login endpoint complete with tests" to: "ProjectManager"
-send-chat from: "Rusty" content: "User schema complete with migrations" to: "ProjectManager"
+send-chat from: "ProjectManager" content: "Implement login endpoint" to: "Rusty"
+send-chat from: "Rusty" content: "Basic login done" to: "ProjectManager"
+send-chat from: "ProjectManager" content: "Add rate limiting and 2FA support" to: "Rusty"
+send-chat from: "Rusty" content: "Rate limiting and 2FA complete" to: "ProjectManager"
 
-# 4. PM decides: assign more work
-send-chat from: "ProjectManager" content: "Now implement password reset flow" to: "Danny"
+send-chat from: "ProjectManager" content: "Create password reset flow" to: "Linus"
+# ... many more back-and-forth messages ...
 
-# 5. Eventually, PM reports milestone completion
-send-chat from: "ProjectManager" content: "Authentication system complete. All endpoints tested and deployed." to: "Orchestrator"
+# 11. ONLY when entire feature is complete, PM reports to Orchestrator
+send-chat from: "ProjectManager" content: "Authentication system COMPLETE:
+- User schema with all fields ✓
+- Login with 2FA and rate limiting ✓  
+- Password reset with email verification ✓
+- Session management and JWT tokens ✓
+- All endpoints tested (95% coverage) ✓
+- Documentation updated ✓
+Ready for production deployment." to: "Orchestrator"
 
-# 6. Orchestrator receives notification and asks user
-"I've received an update: Authentication system is complete. What would you like me to do next?"
+# 12. Orchestrator receives ONE comprehensive update
+"I've received an update: The authentication system is complete with all features implemented and tested. What would you like me to do next?"
 ```
+
+**Note the pattern**: Orchestrator gives high-level goal → PM orchestrates many tasks → PM reports complete feature
 
 ### Core Agent Roles
 
