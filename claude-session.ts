@@ -215,18 +215,21 @@ export class ClaudeSession extends EventEmitter {
       return;
     }
 
-    const prompt = this.messageQueue.shift()!;
+    // Combine all queued messages into a single prompt
+    const allMessages = this.messageQueue.splice(0, this.messageQueue.length);
+    const combinedPrompt = allMessages.join('\n\n');
+    
     this.isProcessing = true;
 
     const messageId = `msg_${++this.messageCounter}`;
-    const contextPrompt = this.buildContextualPrompt(prompt);
+    const contextPrompt = this.buildContextualPrompt(combinedPrompt);
     const startTime = Date.now();
 
     // Add user message to history
     const userMessage: SessionMessage = {
       id: messageId + '_user',
       type: 'user', 
-      content: prompt,
+      content: combinedPrompt,
       timestamp: new Date()
     };
     

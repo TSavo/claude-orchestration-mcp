@@ -1,276 +1,282 @@
-![Orchestrator Hero](/Orchestrator.png)
+# Claude Orchestration MCP
 
-**Run AI agents 24/7 while you sleep** - The Tmux Orchestrator enables Claude agents to work autonomously, schedule their own check-ins, and coordinate across multiple projects without human intervention.
+A multi-agent orchestration system for Claude using MCP (Model Context Protocol) with event-driven architecture. This system enables multiple Claude agents to work together, communicate through a shared chat system, and coordinate complex tasks.
 
-## 🤖 Key Capabilities & Autonomous Features
+## Features
 
-- **Self-trigger** - Agents schedule their own check-ins and continue work autonomously
-- **Coordinate** - Project managers assign tasks to engineers across multiple codebases  
-- **Persist** - Work continues even when you close your laptop
-- **Scale** - Run multiple teams working on different projects simultaneously
+- **Event-driven Architecture**: All agent communication happens through events with a clean `onMessage` API
+- **Message Queuing**: Multiple messages are automatically combined into a single prompt for efficiency
+- **Inter-agent Communication**: Agents can communicate through a shared chat system
+- **Session Persistence**: Agent conversations are saved and restored automatically
+- **MCP Integration**: Full Model Context Protocol server for managing agents
+- **Dependency Injection**: Clean architecture with proper separation of concerns
+- **TypeScript First**: Fully typed with strict TypeScript configuration
 
-## 🏗️ Architecture
-
-The Tmux Orchestrator uses a three-tier hierarchy to overcome context window limitations:
-
-```
-┌─────────────┐
-│ Orchestrator│ ← You interact here
-└──────┬──────┘
-       │ Monitors & coordinates
-       ▼
-┌─────────────┐     ┌─────────────┐
-│  Project    │     │  Project    │
-│  Manager 1  │     │  Manager 2  │ ← Assign tasks, enforce specs
-└──────┬──────┘     └──────┬──────┘
-       │                   │
-       ▼                   ▼
-┌─────────────┐     ┌─────────────┐
-│ Engineer 1  │     │ Engineer 2  │ ← Write code, fix bugs
-└─────────────┘     └─────────────┘
-```
-
-### Why Separate Agents?
-- **Limited context windows** - Each agent stays focused on its role
-- **Specialized expertise** - PMs manage, engineers code
-- **Parallel work** - Multiple engineers can work simultaneously
-- **Better memory** - Smaller contexts mean better recall
-
-## 📸 Examples in Action
-
-### Project Manager Coordination
-![Initiate Project Manager](Examples/Initiate%20Project%20Manager.png)
-*The orchestrator creating and briefing a new project manager agent*
-
-### Status Reports & Monitoring
-![Status Reports](Examples/Status%20reports.png)
-*Real-time status updates from multiple agents working in parallel*
-
-### Tmux Communication
-![Reading TMUX Windows and Sending Messages](Examples/Reading%20TMUX%20Windows%20and%20Sending%20Messages.png)
-*How agents communicate across tmux windows and sessions*
-
-### Project Completion
-![Project Completed](Examples/Project%20Completed.png)
-*Successful project completion with all tasks verified and committed*
-
-## 🎯 Quick Start
-
-### Option 1: Basic Setup (Single Project)
+## Installation
 
 ```bash
-# 1. Create a project spec
-cat > project_spec.md << 'EOF'
-PROJECT: My Web App
-GOAL: Add user authentication system
-CONSTRAINTS:
-- Use existing database schema
-- Follow current code patterns  
-- Commit every 30 minutes
-- Write tests for new features
-
-DELIVERABLES:
-1. Login/logout endpoints
-2. User session management
-3. Protected route middleware
-EOF
-
-# 2. Start tmux session
-tmux new-session -s my-project
-
-# 3. Start project manager in window 0
-claude
-
-# 4. Give PM the spec and let it create an engineer
-"You are a Project Manager. Read project_spec.md and create an engineer 
-in window 1 to implement it. Schedule check-ins every 30 minutes."
-
-# 5. Schedule orchestrator check-in
-./schedule_with_note.sh 30 "Check PM progress on auth system"
+npm install
 ```
 
-### Option 2: Full Orchestrator Setup
+## Quick Start
+
+### Basic Usage
+
+```typescript
+import { ClaudeSession } from './claude-session.js';
+
+// Create an agent
+const agent = new ClaudeSession({
+  model: 'sonnet',
+  agentName: 'Assistant'
+});
+
+// Listen for responses
+agent.onMessage((message) => {
+  if (message.type === 'assistant') {
+    console.log('Response:', message.content);
+  }
+});
+
+// Send a query
+agent.query('Hello, how can you help me?');
+```
+
+### Multi-Agent System
+
+```typescript
+import { SessionManager } from './claude-session.js';
+import { sharedChat } from './shared-chat.js';
+
+// Create a session manager
+const sessionManager = new SessionManager();
+
+// Wire up the shared chat system
+sharedChat.setAgentRegistry(sessionManager);
+
+// Create multiple agents
+const developer = sessionManager.createSession('Developer', {
+  model: 'sonnet'
+});
+
+const reviewer = sessionManager.createSession('Reviewer', {
+  model: 'sonnet'
+});
+
+// Agents can communicate through shared chat
+await sharedChat.sendChatMessage('Developer', 'Code is ready for review', 'Reviewer');
+// The Reviewer agent will automatically receive and process this message
+```
+
+## Architecture
+
+### Event-Based Message Flow
+
+The system uses an event-driven architecture where all output flows through events:
+
+```typescript
+agent
+  .onMessage((msg) => {
+    switch (msg.type) {
+      case 'stream':    // Real-time streaming chunks
+      case 'assistant': // Complete response
+    }
+  })
+  .query('Your prompt here');
+```
+
+### Message Queuing
+
+When multiple messages are sent to an agent while it's busy, they are automatically queued and combined into a single prompt:
+
+```typescript
+agent.query('First question');
+agent.query('Second question'); 
+agent.query('Third question');
+// These will be combined into one prompt with all three questions
+```
+
+### Shared Chat System
+
+Agents can communicate through a shared chat system that automatically delivers messages:
+
+```typescript
+// Send a targeted message
+await sharedChat.sendChatMessage('Sender', 'Message content', 'TargetAgent');
+
+// Send a broadcast message
+await sharedChat.sendChatMessage('Sender', 'Hello everyone!');
+
+// Messages with @mentions are automatically routed
+await sharedChat.sendChatMessage('PM', 'Hey @Developer, please review @QA findings');
+```
+
+## MCP Server
+
+The MCP server provides tools for managing agents:
+
+### Available Tools
+
+- `make-new-agent` - Create a new agent with specified name and model
+- `send-agent-command` - Send a command to a specific agent
+- `get-last-messages` - Retrieve recent messages from an agent
+- `stop-agent` - Stop an agent's current operation
+- `delete-agent` - Remove an agent permanently
+- `send-chat` - Send a message to the shared chat
+- `read-chat` - Read messages from the shared chat
+- `clear-agent` - Clear an agent's history
+- `summarize-agent` - Get a summary of an agent's work
+
+### Running the MCP Server
 
 ```bash
-# Start the orchestrator
-tmux new-session -s orchestrator
-claude
-
-# Give it your projects
-"You are the Orchestrator. Set up project managers for:
-1. Frontend (React app) - Add dashboard charts
-2. Backend (FastAPI) - Optimize database queries
-Schedule yourself to check in every hour."
+npm run start:mcp
 ```
 
-## ✨ Key Features
+Then configure your Claude Desktop app to use the MCP server by adding to your Claude Desktop config:
 
-### 🔄 Self-Scheduling Agents
-Agents can schedule their own check-ins using:
-```bash
-./schedule_with_note.sh 30 "Continue dashboard implementation"
+```json
+{
+  "mcpServers": {
+    "orchestrator": {
+      "command": "npm",
+      "args": ["run", "start:mcp"],
+      "cwd": "/path/to/claude-orchestration-mcp"
+    }
+  }
+}
 ```
 
-### 👥 Multi-Agent Coordination
-- Project managers communicate with engineers
-- Orchestrator monitors all project managers
-- Cross-project knowledge sharing
+## API Reference
 
-### 💾 Automatic Git Backups
-- Commits every 30 minutes of work
-- Tags stable versions
-- Creates feature branches for experiments
+### ClaudeSession
 
-### 📊 Real-Time Monitoring
-- See what every agent is doing
-- Intervene when needed
-- Review progress across all projects
+Main class for creating and managing individual agents.
 
-## 📋 Best Practices
+#### Constructor Options
 
-### Writing Effective Specifications
-
-```markdown
-PROJECT: E-commerce Checkout
-GOAL: Implement multi-step checkout process
-
-CONSTRAINTS:
-- Use existing cart state management
-- Follow current design system
-- Maximum 3 API endpoints
-- Commit after each step completion
-
-DELIVERABLES:
-1. Shipping address form with validation
-2. Payment method selection (Stripe integration)
-3. Order review and confirmation page
-4. Success/failure handling
-
-SUCCESS CRITERIA:
-- All forms validate properly
-- Payment processes without errors  
-- Order data persists to database
-- Emails send on completion
+```typescript
+interface SessionConfig {
+  model?: 'sonnet' | 'haiku' | 'opus';
+  historyPath?: string;
+  agentName?: string;
+  skipPermissions?: boolean;
+  autoSave?: boolean;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+}
 ```
 
-### Git Safety Rules
+#### Methods
 
-1. **Before Starting Any Task**
-   ```bash
-   git checkout -b feature/[task-name]
-   git status  # Ensure clean state
-   ```
+- `query(prompt: string): void` - Send a prompt to the agent
+- `onMessage(callback: Function): ClaudeSession` - Listen for messages (chainable)
+- `getStatus(): object` - Get current session status
+- `getSessionId(): string` - Get the session identifier
 
-2. **Every 30 Minutes**
-   ```bash
-   git add -A
-   git commit -m "Progress: [what was accomplished]"
-   ```
+#### Events
 
-3. **When Task Completes**
-   ```bash
-   git tag stable-[feature]-[date]
-   git checkout main
-   git merge feature/[task-name]
-   ```
+- `message` - All message types (stream, assistant)
+- `message-sent` - When a message is sent to Claude
+- `message-received` - When a complete response is received
+- `stream-chunk` - Individual streaming chunks
+- `error` - Error events
 
-## 🚨 Common Pitfalls & Solutions
+### SessionManager
 
-| Pitfall | Consequence | Solution |
-|---------|-------------|----------|
-| Vague instructions | Agent drift, wasted compute | Write clear, specific specs |
-| No git commits | Lost work, frustrated devs | Enforce 30-minute commit rule |
-| Too many tasks | Context overload, confusion | One task per agent at a time |
-| No specifications | Unpredictable results | Always start with written spec |
-| Missing checkpoints | Agents stop working | Schedule regular check-ins |
+Manages multiple agent sessions and implements the AgentRegistry interface.
 
-## 🛠️ How It Works
+#### Methods
 
-### The Magic of Tmux
-Tmux (terminal multiplexer) is the key enabler because:
-- It persists terminal sessions even when disconnected
-- Allows multiple windows/panes in one session
-- Claude runs in the terminal, so it can control other Claude instances
-- Commands can be sent programmatically to any window
+- `createSession(name: string, config?: SessionConfig): ClaudeSession`
+- `getSession(sessionId: string): ClaudeSession | undefined`
+- `getSessionByName(name: string): ClaudeSession | undefined`
+- `listSessions(): SessionInfo[]`
+- `removeSession(sessionId: string): void`
 
-### 💬 Simplified Agent Communication
+### SharedChatStore
 
-We now use the `send-claude-message.sh` script for all agent communication:
+Singleton for managing inter-agent communication.
+
+#### Methods
+
+- `sendChatMessage(from: string, content: string, to?: string): Promise<ChatMessage>`
+- `getChatMessages(limit?: number): ChatMessage[]`
+- `setAgentRegistry(registry: AgentRegistry): void`
+
+## Development
+
+### Running Tests
 
 ```bash
-# Send message to any Claude agent
-./send-claude-message.sh session:window "Your message here"
+# Test the ClaudeSession wrapper
+npm run test:session
 
-# Examples:
-./send-claude-message.sh frontend:0 "What's your progress on the login form?"
-./send-claude-message.sh backend:1 "The API endpoint /api/users is returning 404"
-./send-claude-message.sh project-manager:0 "Please coordinate with the QA team"
+# Test chat activation
+npm run test:chat
+
+# Run the MCP server
+npm run start:mcp
 ```
 
-The script handles all timing complexities automatically, making agent communication reliable and consistent.
+### TypeScript
 
-### Scheduling Check-ins
+The project uses strict TypeScript configuration with:
+- ES2024 target
+- NodeNext module resolution
+- Strict type checking
+- No implicit any
+
+### Building
+
 ```bash
-# Schedule with specific, actionable notes
-./schedule_with_note.sh 30 "Review auth implementation, assign next task"
-./schedule_with_note.sh 60 "Check test coverage, merge if passing"
-./schedule_with_note.sh 120 "Full system check, rotate tasks if needed"
+npm run build
 ```
 
-**Important**: The orchestrator needs to know which tmux window it's running in to schedule its own check-ins correctly. If scheduling isn't working, verify the orchestrator knows its current window with:
-```bash
-echo "Current window: $(tmux display-message -p "#{session_name}:#{window_index}")"
+## Examples
+
+See the `example-*.ts` files for more usage examples:
+- `example-usage.ts` - Basic usage patterns
+- `example-chaining.ts` - Method chaining examples
+- `test-chat-activation.ts` - Inter-agent communication demo
+
+## Architecture Notes
+
+### Message Combining
+
+When multiple messages are queued, they are combined into a single prompt for efficiency:
+```
+Message 1: "What is 2+2?"
+Message 2: "What is the capital of France?"
+Message 3: "Tell me a joke"
+
+Combined prompt sent to Claude:
+"What is 2+2?
+
+What is the capital of France?
+
+Tell me a joke"
 ```
 
-## 🎓 Advanced Usage
+### Session Persistence
 
-### Multi-Project Orchestration
-```bash
-# Start orchestrator
-tmux new-session -s orchestrator
+Agent sessions are automatically saved to disk and can be resumed:
+- Session history: `.claude-agent-[name].json`
+- Shared chat: `.claude-chat.json`
+- Session registry: `.session-registry.json`
 
-# Create project managers for each project
-tmux new-window -n frontend-pm
-tmux new-window -n backend-pm  
-tmux new-window -n mobile-pm
+### Clean Architecture
 
-# Each PM manages their own engineers
-# Orchestrator coordinates between PMs
-```
+The system uses dependency injection to avoid tight coupling:
+- `AgentRegistry` interface defines the contract
+- `SessionManager` implements the registry
+- `SharedChatStore` accepts any registry implementation
 
-### Cross-Project Intelligence
-The orchestrator can share insights between projects:
-- "Frontend is using /api/v2/users, update backend accordingly"
-- "Authentication is working in Project A, use same pattern in Project B"
-- "Performance issue found in shared library, fix across all projects"
+## License
 
-## 📚 Core Files
+MIT
 
-- `send-claude-message.sh` - Simplified agent communication script
-- `schedule_with_note.sh` - Self-scheduling functionality
-- `tmux_utils.py` - Tmux interaction utilities
-- `CLAUDE.md` - Agent behavior instructions
-- `LEARNINGS.md` - Accumulated knowledge base
+## Contributing
 
-## 🤝 Contributing & Optimization
-
-The orchestrator evolves through community discoveries and optimizations. When contributing:
-
-1. Document new tmux commands and patterns in CLAUDE.md
-2. Share novel use cases and agent coordination strategies
-3. Submit optimizations for claudes synchronization
-4. Keep command reference up-to-date with latest findings
-5. Test improvements across multiple sessions and scenarios
-
-Key areas for enhancement:
-- Agent communication patterns
-- Cross-project coordination
-- Novel automation workflows
-
-## 📄 License
-
-MIT License - Use freely but wisely. Remember: with great automation comes great responsibility.
-
----
-
-*"The tools we build today will program themselves tomorrow"* - Alan Kay, 1971
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

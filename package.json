@@ -1,4 +1,19 @@
 {
+  "name": "claude-code-orchestration-mcp",
+  "version": "1.0.0",
+  "description": "Multi-agent orchestration system for Claude using MCP (Model Context Protocol) with event-driven architecture",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:mcp": "tsx mcp-agent-server.ts",
+    "test:session": "tsx test-claude-session.ts",
+    "test:chat": "tsx test-chat-activation.ts",
+    "build": "tsc"
+  },
+  "keywords": ["claude", "mcp", "orchestration", "agents", "ai"],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "@instantlyeasy/claude-code-sdk-ts": "^0.3.3",
     "@modelcontextprotocol/sdk": "^1.16.0",
@@ -6,17 +21,6 @@
     "typescript": "^5.8.3",
     "zod": "^3.25.76"
   },
-  "name": "claude-code-orchestration-mcp",
-  "version": "1.0.0",
-  "description": "![Orchestrator Hero](/Orchestrator.png)",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "@eslint/js": "^9.31.0",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
