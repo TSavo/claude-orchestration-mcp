@@ -35,25 +35,25 @@ export class MCPAgentServer {
       tools: [
         {
           name: "make-new-agent",
-          description: "Create a new Claude agent with a given name",
+          description: "Create a new Claude agent with a given name. USAGE: Only for Orchestrator and Project Managers creating team members. Agents should be given themed names (Matrix, Ex Machina, etc.) and will receive comprehensive role-specific briefings automatically. Each agent gets individual history files for conversation persistence.",
           inputSchema: {
             type: "object",
             properties: {
-              name: { type: "string", description: "Name for the new agent" },
-              model: { type: "string", enum: ["sonnet", "haiku", "opus"], default: "sonnet" },
-              tools: { type: "array", items: { type: "string" }, description: "Tools to enable" }
+              name: { type: "string", description: "Themed name for the new agent (e.g. Neo, Trinity, Morpheus for Matrix theme)" },
+              model: { type: "string", enum: ["sonnet", "haiku", "opus"], default: "sonnet", description: "AI model - sonnet recommended for development work" },
+              tools: { type: "array", items: { type: "string" }, description: "MCP tools to enable - leave empty for default set" }
             },
             required: ["name"]
           }
         },
         {
           name: "send-agent-command",
-          description: "Send a command to an existing agent",
+          description: "Send a direct command to an existing agent. EMERGENCY USE ONLY: For debugging unresponsive agents or system recovery. ALL normal communication including briefings MUST use send-chat with 'to:' parameter. This bypasses the chat system and should be avoided - prefer send-chat for all regular communication including initial briefings.",
           inputSchema: {
             type: "object",
             properties: {
-              agentName: { type: "string", description: "Name of the agent" },
-              command: { type: "string", description: "Command to send" }
+              agentName: { type: "string", description: "Name of the agent (emergency debugging only)" },
+              command: { type: "string", description: "Emergency command - prefer send-chat for normal communication" }
             },
             required: ["agentName", "command"]
           }
@@ -83,36 +83,36 @@ export class MCPAgentServer {
         },
         {
           name: "delete-agent",
-          description: "Delete an agent permanently",
+          description: "Delete an agent permanently from the system. LIFECYCLE MANAGEMENT: Use when projects complete or switching to diverse tasks. Fresh agents provide better focus and avoid context contamination. ONLY delete agents when: 1) Project fully complete, 2) Switching to different technology/domain, 3) Agent becomes confused/unresponsive. Keep agents for same-project continuation.",
           inputSchema: {
             type: "object",
             properties: {
-              agentName: { type: "string", description: "Name of the agent to delete" }
+              agentName: { type: "string", description: "Name of the agent to permanently remove - this will delete their conversation history" }
             },
             required: ["agentName"]
           }
         },
         {
           name: "send-chat",
-          description: "Send a message to the shared agent chat",
+          description: "Send a message to the shared agent chat system. PRIMARY COMMUNICATION TOOL. Use for all agent-to-agent communication, status updates, task assignments, and session endings. MANDATORY: Every session must end with send-chat to your supervisor. Use 'to:' parameter for direct agent communication. Supports @mentions for additional notifications.",
           inputSchema: {
             type: "object",
             properties: {
-              from: { type: "string", description: "Name of the agent sending the message" },
-              content: { type: "string", description: "Chat message content" },
-              to: { type: "string", description: "Optional: specific agent to direct the message to" }
+              from: { type: "string", description: "Your agent name - always identify yourself correctly" },
+              content: { type: "string", description: "Message content - be specific and include context. For assignments include 'REPLY TO:' and 'DO NOT FINISH' instructions." },
+              to: { type: "string", description: "Target agent name for direct communication (enables focused collaboration) - REQUIRED for session endings and assignments" }
             },
             required: ["from", "content"]
           }
         },
         {
           name: "read-chat",
-          description: "Read messages from the shared agent chat",
+          description: "Read messages from the shared agent chat system. Use this regularly to check for targeted messages, @mentions, and team communications. BEHAVIOR: Always check for messages directed at you when starting work or when notified. Read recent team conversations to understand current project status and respond to relevant discussions.",
           inputSchema: {
             type: "object",
             properties: {
-              agentName: { type: "string", description: "Name of the agent reading chat (for filtering)" },
-              limit: { type: "number", description: "Number of recent messages to retrieve", default: 20 }
+              agentName: { type: "string", description: "Your agent name - used to filter relevant messages and show targeted communications" },
+              limit: { type: "number", description: "Number of recent messages to retrieve - use 10-20 for recent context, 50+ for project review", default: 20 }
             },
             required: ["agentName"]
           }
@@ -188,14 +188,14 @@ export class MCPAgentServer {
         },
         {
           name: "init",
-          description: "Initialize project by scanning codebase and creating steering documents in specs/",
+          description: "Initialize project by comprehensively scanning codebase and creating professional steering documents in specs/ directory. BEHAVIOR: Performs deep codebase analysis, identifies existing features, creates specs/project-overview/, specs/existing-features/, and specs/proposed-features/ with requirements.md, design.md, and tasks.md for each. Creates development-standards.md with project conventions. CRITICAL: Creates production-ready documentation for immediate team use.",
           inputSchema: {
             type: "object",
             properties: {
-              projectName: { type: "string", description: "Name of the project" },
-              workingDirectory: { type: "string", description: "Full path to project directory to scan" },
-              projectType: { type: "string", description: "Type of project (web app, API, mobile, etc.)", default: "web app" },
-              analysisDepth: { type: "string", enum: ["quick", "comprehensive"], description: "Depth of codebase analysis", default: "comprehensive" }
+              projectName: { type: "string", description: "Official project name - will be used in all generated documentation" },
+              workingDirectory: { type: "string", description: "Full absolute path to project root directory - must contain source code" },
+              projectType: { type: "string", description: "Project type for context (web app, API, mobile, AI/ML, etc.) - affects analysis focus", default: "web app" },
+              analysisDepth: { type: "string", enum: ["quick", "comprehensive"], description: "Analysis depth - comprehensive recommended for new teams", default: "comprehensive" }
             },
             required: ["projectName", "workingDirectory"]
           }

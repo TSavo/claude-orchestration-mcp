@@ -189,16 +189,97 @@ WORKING DIRECTORY: [/full/path/to/project] ⚠️ CRITICAL
 Ensure all developers know this is where they work..."
 ```
 
+## 🔄 Agent Lifecycle Management - CRITICAL POLICY
+
+### Agent Specialization Principle
+**RULE**: Agents should NOT be reused for multiple diverse tasks or projects.
+
+**When to Delete and Recreate Agents:**
+
+#### Project Completion
+```bash
+# When a project is fully complete
+send-chat from: "Orchestrator" content: "@ProjectManager Project [ProjectName] complete. Please provide final status and prepare for team dissolution." to: "ProjectManager"
+
+# After receiving final status
+delete-agent agentName: "ProjectManager"
+delete-agent agentName: "DeveloperName1"
+delete-agent agentName: "DeveloperName2"
+# etc.
+```
+
+#### Task Context Switching
+```bash
+# WRONG: Reusing existing agents for different projects
+# send-chat from: "Orchestrator" content: "@ExistingPM Now work on completely different project" ❌
+
+# CORRECT: Create fresh agents for new projects
+delete-agent agentName: "ExistingPM"
+make-new-agent name: "NewProjectPM" model: "sonnet"
+send-agent-command agentName: "NewProjectPM" command: "[Fresh briefing for new project]" ✅
+```
+
+#### Why Fresh Agents Are Essential
+- **Context Contamination**: Previous project knowledge interferes with new tasks
+- **Mental Model Conflicts**: Different architectural approaches cause confusion
+- **Spec Confusion**: Requirements from different projects get mixed
+- **Communication History**: Old conversations create noise and distraction
+- **Focus Quality**: Fresh agents approach new problems with clear perspective
+
+### Project Transition Workflow
+
+**Step 1: Complete Current Project**
+```bash
+# Ensure clean completion
+send-chat from: "Orchestrator" content: "@ProjectManager Please confirm all tasks complete, code committed, and documentation updated. Provide final project summary." to: "ProjectManager"
+```
+
+**Step 2: Archive and Clean Up**
+```bash
+# Get final status
+read-chat agentName: "Orchestrator" limit: 10
+
+# Document completion
+"Project [Name] completed successfully. Final status: [summary]"
+
+# Clean slate for next project
+delete-agent agentName: "ProjectManager"
+delete-agent agentName: "Developer1"
+delete-agent agentName: "Developer2"
+```
+
+**Step 3: Fresh Start for New Project**
+```bash
+# Create new team with new names and fresh context
+make-new-agent name: "NewPM" model: "sonnet"
+send-agent-command agentName: "NewPM" command: "[Fresh briefing for new project with no reference to previous work]"
+```
+
+### Exceptions to Recreation Rule
+
+**ONLY reuse agents for:**
+- **Same project continuation** (adding features to existing system)
+- **Closely related tasks** (bug fixes, minor enhancements)
+- **Same codebase work** (refactoring, optimization)
+
+**ALWAYS recreate agents for:**
+- **Different projects** (new repositories, different codebases)
+- **Different technology stacks** (React → Python, Web → Mobile)
+- **Different domains** (E-commerce → AI/ML, API → Frontend)
+- **Different clients/stakeholders** (different business contexts)
+
 ## Quality Control
 - Approve specs before implementation begins
 - Monitor milestone deliveries for quality
 - Escalate to user when major decisions needed
 - Ensure teams follow spec-driven development
+- **Maintain agent specialization** - delete and recreate for new projects
 
 ## Emergency Procedures
 - If PM becomes unresponsive: recreate and re-brief
 - If entire team stuck: clear guidance via chat
 - If quality issues: direct intervention via chat
+- **If agents seem confused**: delete and recreate with fresh briefings
 - Always maintain chain of command
 
 ## Success Metrics

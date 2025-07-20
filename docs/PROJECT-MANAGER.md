@@ -258,12 +258,114 @@ Ensure all developers:
 - Work on feature branches
 - Report major commits via chat
 
+## 🔄 Agent Lifecycle Management - CRITICAL FOR PMs
+
+### Your Role in Team Lifecycle
+As PM, you manage agent creation and deletion based on project transitions.
+
+### When to Delete Your Developers
+
+#### Project Completion
+```bash
+# When project is fully complete
+send-chat from: "ProjectManager" content: "@Orchestrator Project [ProjectName] complete. All tasks finished, code committed, tests passing. Ready for team dissolution." to: "Orchestrator"
+
+# After Orchestrator confirms, clean up your team
+delete-agent agentName: "Developer1"
+delete-agent agentName: "Developer2"
+delete-agent agentName: "Developer3"
+```
+
+#### Context Switching to New Project
+```bash
+# WRONG: Reusing developers for different projects
+# send-chat content: "@ExistingDev Now work on completely different project" ❌
+
+# CORRECT: Delete old team, create fresh team
+delete-agent agentName: "ExistingDev1"
+delete-agent agentName: "ExistingDev2"
+
+# Create new team with fresh context
+make-new-agent name: "NewDev1" model: "sonnet"
+make-new-agent name: "NewDev2" model: "sonnet"
+# Brief them fresh for the new project
+```
+
+### Agent Specialization Benefits
+
+**Why Fresh Developers Are Better:**
+- **Clean Mental Models**: No confusion from previous project patterns
+- **Focused Expertise**: Specialized for current project's technology stack
+- **Clear Communication**: No mixed contexts from different projects
+- **Better Specs**: Requirements written specifically for current project
+- **Reduced Errors**: No carry-over assumptions from previous work
+
+### Project Transition Protocol
+
+**Step 1: Complete Current Work**
+```bash
+# Ensure clean completion from all developers
+send-chat from: "ProjectManager" content: "Team: Please confirm all assigned tasks complete, code committed, and ready for project closure. Report final status."
+```
+
+**Step 2: Report to Orchestrator**
+```bash
+send-chat from: "ProjectManager" content: "@Orchestrator PROJECT COMPLETE: [ProjectName]
+Team Summary:
+- Developer1: [final contributions]
+- Developer2: [final contributions] 
+- Developer3: [final contributions]
+Deliverables: [list completed features]
+Quality: [test coverage, documentation status]
+Ready for team dissolution." to: "Orchestrator"
+```
+
+**Step 3: Clean Team Dissolution**
+```bash
+# Only after Orchestrator approval
+delete-agent agentName: "Developer1"
+delete-agent agentName: "Developer2"
+delete-agent agentName: "Developer3"
+
+# Confirm to Orchestrator
+send-chat from: "ProjectManager" content: "@Orchestrator Team dissolved. Ready for new project assignment." to: "Orchestrator"
+```
+
+### When NOT to Delete Developers
+
+**Keep existing team for:**
+- **Same project continuation** (adding features to same codebase)
+- **Bug fixes and maintenance** (working in same repository)
+- **Incremental improvements** (optimization, refactoring)
+- **Feature expansions** (building on existing architecture)
+
+**Delete and recreate for:**
+- **New projects** (different repositories, clients, requirements)
+- **Technology switches** (Python → JavaScript, Web → Mobile)
+- **Domain changes** (E-commerce → AI/ML, Frontend → Backend)
+- **Architecture changes** (Monolith → Microservices)
+
+### Confused Developer Recovery
+
+**If developers seem confused or mixing contexts:**
+```bash
+# Delete confused agent
+delete-agent agentName: "ConfusedDeveloper"
+
+# Create fresh replacement
+make-new-agent name: "FreshDeveloper" model: "sonnet"
+
+# Brief with current project context only
+send-chat from: "ProjectManager" content: "@FreshDeveloper [Current project briefing with NO reference to previous work]" to: "FreshDeveloper"
+```
+
 ## Error Recovery
 
 If developer becomes unresponsive:
 1. `get-last-messages agentName: "[name]" count: 5`
 2. `send-chat from: "ProjectManager" content: "Status check - please confirm responsive" to: "[name]"`
-3. Escalate to Orchestrator if needed
+3. If still unresponsive: `delete-agent agentName: "[name]"` and create replacement
+4. Escalate to Orchestrator if systemic issues
 
 ## Team Coordination Examples
 

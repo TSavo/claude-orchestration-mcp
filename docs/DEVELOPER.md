@@ -119,89 +119,569 @@ Your Project Manager will assign you work in the specs/ structure:
 - **API Refactor**: `specs/existing-features/api-refactor/`
 - **Authentication Fix**: `specs/existing-features/user-auth/`
 
-### 📋 DETAILED SPEC WRITING GUIDE
+### 📋 COMPREHENSIVE SPEC WRITING GUIDE
 
 **CRITICAL**: Every specification document must be comprehensive, professional-grade, and actionable. These specs serve as contracts between team members and the foundation for all development work.
 
-### 1. Requirements Specification (requirements.md)
-**PURPOSE**: Define EXACTLY what needs to be built, why it's needed, and how success is measured.
+## 🎯 SPEC FORMAT OVERVIEW
 
-**MANDATORY SECTIONS** for every requirements.md:
+**The 3-Phase Format**: Every feature requires exactly 3 documents following this proven format:
 
-#### A. Feature/Project Purpose
-```markdown
-## Purpose
-### Problem Statement
-- What specific problem does this solve?
-- Who is affected by this problem?
-- What happens if we don't solve it?
-
-### Target Users
-- Primary users: [detailed user personas]
-- Secondary users: [other stakeholders]
-- User goals and motivations
-- Current user pain points
-
-### Success Metrics
-- Quantifiable success criteria
-- Key Performance Indicators (KPIs)
-- User acceptance criteria
-- Business impact measurements
+```
+specs/[feature-name]/
+├── requirements.md     # WHAT to build (user stories + EARS syntax)
+├── design.md          # HOW to build it (architecture + code)
+└── tasks.md           # WHEN to build it (phases + checkboxes)
 ```
 
-#### B. Functional Requirements (EARS Syntax)
-**EARS Format**: WHEN [condition] THEN [system response] IF [constraint]
+**Each document builds on the previous:**
+- **Requirements** → Define user needs and business rules
+- **Design** → Architect the technical solution
+- **Tasks** → Plan the implementation with progress tracking
+
+---
+
+## 📋 PHASE 1: Requirements Specification (requirements.md)
+
+**PURPOSE**: Define EXACTLY what needs to be built using user stories and EARS syntax.
+
+### MANDATORY DOCUMENT STRUCTURE
+
+Every requirements.md MUST follow this exact structure:
 
 ```markdown
-## Functional Requirements
+# [Feature Name] Requirements Document
 
-### Core User Workflows
-WHEN a new user visits the registration page
-THEN the system displays email, password, and confirm password fields
-IF the user has not exceeded the daily registration limit
+## Introduction
 
-WHEN a user submits valid registration data
-THEN the system creates a new account and sends a verification email
-IF the email address is not already registered
+[2-3 paragraph overview explaining:
+- Current situation and problems
+- Why this feature is needed
+- High-level goals and scope
+- Integration with existing systems]
+
+## Requirements
+
+### Requirement 1: [Brief Title]
+
+**User Story:** As a [role], I want [capability], so that [benefit].
+
+#### Acceptance Criteria
+
+1. WHEN [condition] THEN [system behavior] 
+2. WHEN [condition] AND [additional condition] THEN [system behavior]
+3. IF [edge case] THEN [system behavior]
+4. WHEN [condition] THEN the system SHALL [mandatory behavior]
+[Continue with 5-15 criteria covering normal flow, edge cases, errors]
+
+### Requirement 2: [Next Title]
+
+**User Story:** As a [different role], I want [capability], so that [benefit].
+
+#### Acceptance Criteria
+
+[5-15 more EARS syntax criteria]
+
+[Continue with 5-10 requirements total]
+```
+
+### 🔥 CRITICAL RULES FOR REQUIREMENTS
+
+#### 1. Use Perfect EARS Syntax
+**EARS = Event-Action-Response-State**
+
+**Correct Patterns:**
+```markdown
+WHEN a user clicks the "Register" button
+THEN the system displays the registration form
+IF the user is not already logged in
 
 WHEN a user enters an invalid email format
-THEN the system displays "Please enter a valid email address" error message
+THEN the system displays "Please enter a valid email address" error
 IF the email field loses focus or form is submitted
 
-### Authentication Workflows  
 WHEN a registered user enters correct credentials
-THEN the system grants access and redirects to the dashboard
+THEN the system grants access and redirects to dashboard
 IF the account is verified and not suspended
-
-WHEN a user enters incorrect credentials 3 times
-THEN the system temporarily locks the account for 15 minutes
-IF the lockout hasn't been manually overridden by an admin
-
-### Admin Workflows
-WHEN an admin views the user management page
-THEN the system displays all users with status, registration date, and last login
-IF the admin has user management permissions
 ```
 
-#### C. Non-Functional Requirements
+**Keywords to Use:**
+- `WHEN` - Normal conditions and user actions
+- `IF` - Constraints, edge cases, conditional logic
+- `THEN` - System response and behavior
+- `SHALL` - Mandatory requirements
+- `AND` - Multiple conditions
+- `OR` - Alternative conditions
+
+#### 2. Cover All Scenarios
+**For each requirement, include:**
+- **Happy path** (normal success scenario)
+- **Edge cases** (boundary conditions, unusual inputs)
+- **Error scenarios** (failures, invalid data, timeouts)
+- **Security considerations** (unauthorized access, malicious input)
+- **Performance requirements** (speed, load, concurrency)
+
+#### 3. Be Specific and Measurable
+**Bad Examples:**
 ```markdown
-## Performance Requirements
-- Page load time: < 2 seconds for 95% of requests
-- User registration: < 500ms response time
-- Support: 10,000 concurrent users
-- Database queries: < 100ms average response time
+❌ WHEN the system loads quickly THEN users are happy
+❌ WHEN errors occur THEN show a message
+❌ IF there are problems THEN handle them gracefully
+```
 
-## Security Requirements
-- Password encryption: bcrypt with salt rounds ≥ 12
-- Session management: JWT tokens with 24-hour expiration
-- Rate limiting: 5 login attempts per minute per IP
-- Data protection: All PII encrypted at rest
+**Good Examples:**
+```markdown
+✅ WHEN a user submits a form THEN the system responds within 200ms
+✅ WHEN a login fails THEN the system displays "Invalid email or password" 
+✅ IF the API is unavailable THEN the system shows a retry button with 30-second countdown
+```
 
-## Usability Requirements
-- Mobile responsive: Works on screens ≥ 320px width
-- Accessibility: WCAG 2.1 AA compliance
-- Browser support: Chrome, Firefox, Safari, Edge (latest 2 versions)
-- Error messages: Clear, actionable, user-friendly language
+### REQUIREMENTS CONTENT GUIDE
+
+#### A. Introduction Section Requirements
+```markdown
+## Introduction
+
+[Paragraph 1: Current State]
+Describe the existing system state, current problems, and pain points. Be specific about what's broken or missing.
+
+[Paragraph 2: Proposed Solution]
+Explain what this feature will do and how it solves the problems. Include scope boundaries.
+
+[Paragraph 3: Integration Context] 
+Describe how this fits with existing systems, dependencies, and architectural considerations.
+```
+
+#### B. Requirements Section Structure
+
+**Requirements Numbering:**
+- Use sequential numbering: Requirement 1, 2, 3...
+- Aim for 5-10 requirements per feature
+- Each requirement should be a major functional area
+
+**User Story Format:**
+```markdown
+**User Story:** As a [specific role with context], I want [specific capability with details], so that [specific business benefit].
+```
+
+**Examples:**
+```markdown
+✅ **User Story:** As a system administrator managing 50+ email accounts, I want automated account synchronization between our database and Migadu, so that I don't have to manually create accounts and risk configuration errors.
+
+❌ **User Story:** As a user, I want email to work, so that I can send emails.
+```
+
+#### C. Acceptance Criteria Guidelines
+
+**Criteria Structure:**
+- Start each with WHEN/IF
+- Include specific system responses
+- Cover error conditions
+- Specify measurable outcomes
+- Include security and performance requirements
+
+**Coverage Checklist for Each Requirement:**
+- [ ] Normal successful workflow (3-5 criteria)
+- [ ] Input validation and error handling (2-3 criteria) 
+- [ ] Edge cases and boundary conditions (1-2 criteria)
+- [ ] Security considerations (1-2 criteria)
+- [ ] Performance requirements (1 criteria)
+- [ ] Integration points (1-2 criteria)
+
+**Detailed Examples:**
+```markdown
+### Requirement 1: User Registration
+
+**User Story:** As a potential user visiting the application, I want to create an account with email and password, so that I can access personalized features and save my data.
+
+#### Acceptance Criteria
+
+1. WHEN a new user visits the registration page THEN the system displays email, password, and confirm password fields with clear labels and validation hints
+2. WHEN a user enters a valid email format and strong password THEN the system accepts the input and shows green checkmarks next to each field
+3. WHEN a user submits valid registration data THEN the system creates the account, sends verification email, and redirects to "check your email" page
+4. WHEN a user enters an email that already exists THEN the system displays "An account with this email already exists" and provides login link
+5. WHEN a user enters passwords that don't match THEN the system displays "Passwords must match" error below confirm password field
+6. WHEN a user enters a weak password THEN the system displays specific requirements "Password must contain: uppercase, lowercase, number, special character, minimum 8 characters"
+7. WHEN registration fails due to server error THEN the system displays "Registration temporarily unavailable, please try again" with retry button
+8. IF a user tries to register more than 5 times from same IP in 10 minutes THEN the system temporarily blocks registration with cooldown timer
+9. WHEN a user successfully registers THEN the system logs the registration event with timestamp, IP address, and user agent for security monitoring
+10. IF the email service is unavailable THEN the system creates the account but displays "Verification email delayed, check spam folder or contact support"
+```
+
+---
+
+## 🏗️ PHASE 2: Design Specification (design.md)
+
+**PURPOSE**: Define HOW the requirements will be implemented with complete technical architecture.
+
+### MANDATORY DOCUMENT STRUCTURE
+
+Every design.md MUST follow this exact structure:
+
+```markdown
+# [Feature Name] Design Document
+
+## Overview
+
+[2-3 paragraph technical overview explaining:
+- High-level design approach and architecture patterns
+- Integration points with existing systems
+- Key technical decisions and rationale]
+
+## Architecture
+
+### High-Level Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "[System Name]"
+        COMPONENT1[Component 1]
+        COMPONENT2[Component 2]
+    end
+    
+    subgraph "External Services"
+        API[External API]
+        DB[Database]
+    end
+    
+    COMPONENT1 --> COMPONENT2
+    COMPONENT2 --> API
+    COMPONENT2 --> DB
+```
+
+### Core Components
+
+#### 1. [Component Name]
+[Detailed explanation of component responsibility and implementation]
+
+#### 2. [Component Name]
+[Detailed explanation of component responsibility and implementation]
+
+## Agent Implementations
+
+[OR "API Implementations" OR "Service Implementations" depending on feature type]
+
+### [Service/Agent Name]
+
+```typescript
+// Complete TypeScript interfaces and implementation examples
+export interface ServiceInterface {
+  method1(param: Type): Promise<ReturnType>;
+  method2(param: Type): ReturnType;
+}
+
+export class ServiceImplementation implements ServiceInterface {
+  async method1(param: Type): Promise<ReturnType> {
+    // Complete implementation example
+    return result;
+  }
+}
+```
+
+## Integration Points
+
+### API Routes
+
+```typescript
+// Complete API endpoint implementations
+export async function POST(request: NextRequest) {
+  try {
+    const { param1, param2 } = await request.json();
+    // Complete implementation
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+```
+
+### [Integration Point Name]
+
+[Database schemas, external API integrations, etc.]
+
+## Performance Considerations
+
+### Caching Strategy
+[Detailed caching implementation]
+
+### Error Handling
+[Complete error handling patterns]
+
+## Testing Strategy
+[Unit tests, integration tests, examples]
+```
+
+### 🔥 CRITICAL RULES FOR DESIGN
+
+#### 1. Include Complete Code Examples
+**Every design MUST include:**
+- **Complete TypeScript interfaces** for all data structures
+- **Full implementation examples** showing actual code patterns
+- **API endpoint implementations** with request/response handling
+- **Database schemas** with actual SQL or schema definitions
+- **Integration patterns** showing how components connect
+
+#### 2. Architecture Diagrams Required
+**Use Mermaid syntax for all diagrams:**
+```markdown
+### High-Level Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Email Intelligence System"
+        INBOX[Inbox Interface]
+        ADMIN[Admin Interface] 
+        EMAIL_API[Email API Routes]
+    end
+
+    subgraph "Agent Layer"
+        ASSESSMENT_AGENT[Email Assessment Agent]
+        THREAD_AGENT[Thread Summarization Agent]
+    end
+
+    INBOX --> EMAIL_API
+    EMAIL_API --> ASSESSMENT_AGENT
+    ASSESSMENT_AGENT --> THREAD_AGENT
+```
+```
+
+#### 3. Real Implementation Examples
+**Show actual code, not pseudocode:**
+
+**Bad Example:**
+```markdown
+❌ Create a service that handles authentication
+❌ Add validation to check user input  
+❌ Implement error handling
+```
+
+**Good Example:**
+```typescript
+✅ export class EmailAssessmentAgent {
+  private genericAgent: GenericClaudeCodeAgent;
+  private cacheKey = 'email-assessment';
+
+  constructor() {
+    this.genericAgent = new GenericClaudeCodeAgent();
+  }
+
+  async assessEmail(email: EmailMessage, options?: AssessmentOptions): Promise<EmailAssessment> {
+    const cacheKey = `email-assessment:${email.id}:${options?.version || 'v1'}`;
+    const cached = await this.aiCache.get(cacheKey);
+    if (cached && !options?.forceRefresh) {
+      return cached;
+    }
+
+    const prompt = this.createAssessmentPrompt(email, options);
+    const schema = getEmailAssessmentSchema();
+
+    const result = await this.genericAgent.executeTyped<EmailAssessment>(prompt, schema, {
+      timeout: 30000,
+      temperature: 0.1,
+      maxTokens: 2000,
+      model: 'claude-3-5-sonnet-20241022',
+    });
+
+    return result;
+  }
+}
+```
+
+#### 4. Integration with Existing Systems
+**Always show how new code integrates:**
+- Extend existing interfaces and classes
+- Use established patterns from the codebase
+- Show database integration points
+- Include error handling that matches existing patterns
+
+---
+
+## 📋 PHASE 3: Tasks Specification (tasks.md)
+
+**PURPOSE**: Break down implementation into manageable, trackable development phases.
+
+### MANDATORY DOCUMENT STRUCTURE
+
+Every tasks.md MUST follow this exact structure:
+
+```markdown
+# [Feature Name] Implementation Tasks
+
+## Overview
+
+[Brief summary of implementation approach and phases]
+
+**Current Status:** [Status summary with what's completed]
+
+## Implementation Phases
+
+### Phase 1: [Phase Name] ✅ COMPLETED / 🎯 IN PROGRESS / [ ] TODO
+
+#### Task 1.1: [Task Title] ✅ COMPLETED
+
+- [x] 1.1.1 Specific implementable subtask
+  - ✅ Implementation detail with file locations
+  - ✅ Testing status and validation results
+  - _Requirements: 1.1, 1.2_ (links back to requirements)
+
+- [x] 1.1.2 Next specific subtask
+  - ✅ Created file: `src/lib/example.ts`
+  - ✅ Added tests: `tests/example.test.ts`
+  - ✅ Integration verified with existing system
+  - _Requirements: 1.3, 1.4_
+
+- [ ] 1.1.3 Incomplete subtask
+  - ⚠️ **MISSING:** Specific gap description
+  - 🎯 **IN PROGRESS:** Current work status
+  - _Requirements: 1.5_
+
+**Implementation Details:**
+
+- **Files Created:**
+  - `src/lib/agents/email-assessment-agent.ts` - Main agent class
+  - `src/app/api/email/assess/route.ts` - API endpoint
+
+- **Key Features:**
+  - Feature 1 with technical details
+  - Feature 2 with integration points
+
+- **Testing Status:** ✅ All tests passing with coverage metrics
+
+#### Task 1.2: [Next Task] ⚠️ PARTIALLY COMPLETED
+
+[Same structure as above]
+
+### Phase 2: [Phase Name] [ ] TODO
+
+[Same structure repeating for all phases]
+
+## Implementation Priority
+
+### ✅ High Priority (COMPLETED)
+1. **Task Name** ✅ - Brief description
+
+### 🎯 Next Priority (IN PROGRESS) 
+1. **Task Name** - Brief description
+
+### 📋 Low Priority (TODO)
+1. **Task Name** - Brief description
+
+## Dependencies and Prerequisites
+
+### Technical Dependencies
+- Dependency 1 - Status
+- Dependency 2 - Status
+
+### External Dependencies
+- External service or API requirements
+
+## Success Metrics
+
+### Functional Metrics
+- Specific measurable success criteria
+- Performance benchmarks
+
+### Technical Metrics
+- Code coverage targets
+- Performance requirements
+
+## Overall Implementation Status
+
+### ✅ **Current Achievements**
+[Summary of what's been completed]
+
+### 🎯 **Remaining Work**
+[Summary of what's left to do]
+```
+
+### 🔥 CRITICAL RULES FOR TASKS
+
+#### 1. Hierarchical Task Breakdown
+**Use this exact numbering system:**
+- **Phases**: Phase 1, Phase 2, Phase 3...
+- **Tasks**: Task 1.1, Task 1.2, Task 2.1...
+- **Subtasks**: 1.1.1, 1.1.2, 1.1.3...
+
+#### 2. Checkbox Progress Tracking
+**Status Indicators:**
+- `✅ COMPLETED` - Fully finished and tested
+- `🎯 IN PROGRESS` - Currently being worked on
+- `⚠️ PARTIALLY COMPLETED` - Started but has gaps
+- `[ ]` - Not started (empty checkbox)
+
+**Subtask Checkboxes:**
+- `[x]` - Subtask completed
+- `[ ]` - Subtask not completed
+
+#### 3. Implementation Details Required
+**For every completed task, include:**
+- **Files Created/Modified** - Exact file paths
+- **Key Features** - Technical implementation highlights
+- **Testing Status** - Coverage and test results
+- **Requirements Links** - `_Requirements: X.Y, X.Z_`
+
+#### 4. Gap Identification
+**For incomplete work, use:**
+- `⚠️ **MISSING:**` - Specific gaps in implementation
+- `🎯 **IN PROGRESS:**` - Current work being done
+- `❌ **BLOCKED:**` - Dependencies preventing progress
+
+**Examples:**
+```markdown
+- [ ] 2.1.3 Add user authentication
+  - ⚠️ **MISSING:** Password reset functionality
+  - ⚠️ **MISSING:** Email verification workflow
+  - 🎯 **IN PROGRESS:** Basic login/logout implemented
+  - _Requirements: 2.1, 2.2_
+```
+
+#### 5. Time Estimates and Dependencies
+**Include for each phase:**
+- **Estimated Time** - Realistic development time
+- **Dependencies** - What must be completed first
+- **Success Criteria** - How to know the phase is done
+
+### TASK WRITING EXAMPLES
+
+**Good Task Structure:**
+```markdown
+#### Task 1.1: Email Assessment Agent ✅ COMPLETED
+
+- [x] 1.1.1 Implement core EmailAssessmentAgent class
+  - ✅ Created agent following existing `GenericClaudeCodeAgent` pattern
+  - ✅ Extended existing `EmailReplyClassification` interface
+  - ✅ Implemented comprehensive assessment prompt engineering
+  - ✅ Added confidence scoring and metadata with 30-minute timeout
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [x] 1.1.2 Add assessment schema and types
+  - ✅ Created EmailAssessmentSchema with proper JSON schema conversion
+  - ✅ Integrated with existing AI provider system for structured output
+  - ✅ Added comprehensive type definitions and interfaces
+  - _Requirements: 1.5, 1.6, 1.7_
+
+- [x] 1.1.3 Create assessment API endpoints
+  - ✅ Added `/api/email/assess` endpoint following existing API patterns
+  - ✅ Integrated with existing error handling and validation
+  - ✅ Created comprehensive test scripts for validation
+  - _Requirements: 1.8, 1.9, 1.10_
+
+**Implementation Details:**
+
+- **Files Created:**
+  - `src/lib/agents/email-assessment-agent.ts` - Main agent class
+  - `src/lib/agents/schemas.ts` - Email assessment schema (added to existing)
+  - `src/app/api/email/assess/route.ts` - API endpoint
+  - `scripts/test-email-assessment-agent.ts` - Comprehensive test suite
+
+- **Key Features:**
+  - Claude Code integration with 30-minute timeout
+  - Multi-provider AI fallback (Gemini, OpenRouter, TogetherAI)
+  - Comprehensive email analysis (priority, category, sentiment, action items)
+  - Entity extraction and suggestion generation
+  - Proper caching and error handling
+
+- **Testing Status:** ✅ All tests passing with sample emails
 ```
 
 #### D. Business Logic & Validation Rules
@@ -540,29 +1020,140 @@ CREATE TABLE user_sessions (
 - [ ] Plan rollout strategy (feature flags, gradual rollout)
 ```
 
-### ⚠️ CRITICAL SPEC WRITING RULES
+---
 
-1. **Be Specific**: Never use vague terms like "user-friendly" without defining what that means
-2. **Include Examples**: Every requirement should have concrete examples  
-3. **Define Success**: Every feature must have measurable success criteria
-4. **Consider Edge Cases**: Document error scenarios, boundary conditions, failure modes
-5. **Reference Dependencies**: Clearly state what this depends on and what depends on it
-6. **Estimate Time**: Provide realistic time estimates for all tasks
-7. **Plan Testing**: Every requirement needs corresponding test criteria
-8. **Document Assumptions**: State any assumptions about user behavior, system capabilities, etc.
+## ⚠️ CRITICAL SPEC WRITING RULES
 
-### 🔍 SPEC REVIEW CHECKLIST
+### 1. **Be Comprehensive and Specific**
+**Never use vague terms:**
+- ❌ "user-friendly interface"
+- ✅ "interface responds within 200ms with clear error messages in red text below each form field"
 
-Before submitting any spec for approval, verify:
-- [ ] All mandatory sections are complete and detailed
-- [ ] EARS syntax is used correctly for functional requirements  
-- [ ] Success criteria are specific and measurable
-- [ ] All dependencies and integration points are documented
+- ❌ "good performance"
+- ✅ "API endpoints respond within 500ms for 95% of requests under 1000 concurrent users"
+
+### 2. **Follow the Proven Format Exactly**
+**Each spec document must:**
+- Use the exact section headers and structure shown above
+- Include all mandatory sections (no skipping)
+- Follow the numbering and checkbox systems precisely
+- Link requirements to design to tasks
+
+### 3. **Include Real Examples**
+**Every requirement needs concrete examples:**
+```markdown
+❌ WHEN users log in THEN they get access
+
+✅ WHEN a user enters "john@example.com" and correct password
+THEN the system generates a JWT token valid for 24 hours and redirects to "/dashboard"
+IF the account is verified and not locked
+```
+
+### 4. **Complete Technical Implementation**
+**Design specs must show real code:**
+- Complete TypeScript interfaces
+- Full implementation examples
+- Actual database schemas
+- Real API endpoint code
+- Integration with existing patterns
+
+### 5. **Granular Task Tracking**
+**Break everything into checkable tasks:**
+- Each subtask should take 1-4 hours
+- Include specific file paths
+- Show implementation details
+- Link back to requirements
+- Track status with checkboxes
+
+### 6. **Cover All Scenarios**
+**Every requirement must address:**
+- Happy path (normal success)
+- Error conditions (failures, timeouts)
+- Edge cases (boundary conditions)
+- Security considerations
+- Performance requirements
+- Integration points
+
+### 7. **Real Success Criteria**
+**Define measurable outcomes:**
+- ❌ "Users can register successfully"
+- ✅ "95% of registration attempts complete within 500ms with email verification sent within 30 seconds"
+
+### 8. **Traceability Throughout**
+**Maintain clear links:**
+- Requirements → Design (how requirements are implemented)
+- Design → Tasks (what needs to be built)
+- Tasks → Requirements (why work is being done)
+
+---
+
+## 🔍 COMPREHENSIVE SPEC REVIEW CHECKLIST
+
+### Requirements Document (requirements.md)
+- [ ] Introduction clearly explains current state, problems, and proposed solution
+- [ ] 5-10 requirements with descriptive titles
+- [ ] Each user story follows format: "As a [specific role], I want [specific capability], so that [specific benefit]"
+- [ ] All acceptance criteria use EARS syntax (WHEN/IF...THEN...SHALL)
+- [ ] Each requirement has 8-15 acceptance criteria covering normal flow, errors, edge cases
+- [ ] Requirements are specific and measurable (no vague terms)
+- [ ] Performance, security, and usability requirements included
+- [ ] All dependencies and integration points documented
+
+### Design Document (design.md)
+- [ ] Overview explains technical approach and integration strategy
+- [ ] Mermaid architecture diagram shows all major components
+- [ ] Complete TypeScript interfaces for all data structures
+- [ ] Full implementation examples with actual code patterns
+- [ ] API endpoints with complete request/response examples
+- [ ] Database schemas with actual SQL/schema definitions
+- [ ] Integration points show how to connect with existing systems
+- [ ] Error handling patterns match existing codebase
+- [ ] Performance considerations include caching and optimization
+- [ ] Security measures address authentication, validation, encryption
+
+### Tasks Document (tasks.md)
+- [ ] Overview summarizes implementation approach and current status
+- [ ] Phases are logically organized (Foundation → Core → Integration → Production)
+- [ ] Tasks use hierarchical numbering (1.1, 1.1.1, 1.1.2)
+- [ ] All subtasks have checkboxes and status indicators
+- [ ] Implementation details include specific file paths
+- [ ] Requirements traceability links included (_Requirements: X.Y_)
 - [ ] Time estimates are realistic and justified
-- [ ] Testing approach is comprehensive
-- [ ] Edge cases and error scenarios are covered
-- [ ] Technical approach is feasible with current stack
-- [ ] Security and performance considerations are addressed
+- [ ] Dependencies and prerequisites clearly stated
+- [ ] Success criteria are specific and measurable
+- [ ] Priority sections organize work by importance
+- [ ] Testing strategy covers unit, integration, and E2E testing
+
+### Cross-Document Validation
+- [ ] All requirements have corresponding design elements
+- [ ] All design components have implementation tasks
+- [ ] Task completion criteria align with requirements
+- [ ] Dependencies flow logically across all documents
+- [ ] Technical approach is feasible with current technology stack
+- [ ] Integration points are consistent across all specs
+
+---
+
+## 📝 SPEC COMPLETION REPORTING
+
+**After completing each spec document, ALWAYS report to PM:**
+
+### Requirements Completion
+```bash
+send-chat from: "[YourName]" content: "SPEC COMPLETE: requirements.md for [FeatureName]. Contains [X] requirements with [Y] total acceptance criteria. Covers user registration, authentication, admin workflows, and error handling. File: specs/[feature]/requirements.md. Ready for PM review. What should I work on next?" to: "ProjectManager"
+```
+
+### Design Completion
+```bash
+send-chat from: "[YourName]" content: "SPEC COMPLETE: design.md for [FeatureName]. Architecture: [brief technical summary]. Includes complete TypeScript interfaces, API implementations, and database schemas. File: specs/[feature]/design.md. Ready for PM review. Should I proceed to tasks.md?" to: "ProjectManager"
+```
+
+### Tasks Completion
+```bash
+send-chat from: "[YourName]" content: "SPEC COMPLETE: tasks.md for [FeatureName]. [X] phases defined with [Y] total tasks and clear success criteria. All 3 specs complete and linked. Estimated [Z] hours total implementation. Ready to begin development. Should I start Phase 1?" to: "ProjectManager"
+```
+
+**🚨 CRITICAL**: Never end your session after completing specs without getting explicit approval and next assignment from PM via chat.
 
 ## Overview
 Implement a secure user authentication system with JWT tokens, password hashing, and optional 2FA support for web application users.
