@@ -79,12 +79,6 @@ export class SessionRegistryManager {
     return undefined;
   }
 
-  // Get session by agent name - returns ClaudeSession if found
-  getSessionByAgentName(agentName: string): any {
-    // This needs to coordinate with the session manager
-    // For now, return null - the actual implementation should be in the session manager
-    return null;
-  }
 
   // Extract agent name from tool context (when we can't determine it directly)
   extractAgentFromContext(hookData: any): string | undefined {
@@ -105,11 +99,11 @@ export class SessionRegistryManager {
             const agentName = file.replace('.claude-agent-', '').replace('.json', '');
             return agentName;
           }
-        } catch (_e) {
+        } catch {
           // Skip invalid files
         }
       }
-    } catch (_e) {
+    } catch {
       // Directory read failed, continue with other methods
     }
 

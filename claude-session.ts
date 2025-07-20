@@ -88,10 +88,10 @@ export interface ChatMessage {
 }
 
 export interface MessageStore {
-  saveMessage(message: SessionMessage): Promise<void>;
-  saveRawEvent(event: RawClaudeEvent): Promise<void>;
-  getMessages(sessionId: string): Promise<SessionMessage[]>;
-  getRawEvents(sessionId: string): Promise<RawClaudeEvent[]>;
+  saveMessage(_: SessionMessage): Promise<void>;
+  saveRawEvent(_: RawClaudeEvent): Promise<void>;
+  getMessages(_: string): Promise<SessionMessage[]>;
+  getRawEvents(_: string): Promise<RawClaudeEvent[]>;
   getAllSessions(): Promise<string[]>;
 }
 
@@ -195,7 +195,7 @@ export class ClaudeSession extends EventEmitter {
   private messageQueue: string[] = [];
 
   // Convenience method for chaining
-  onMessage(callback: (_message: any) => void): ClaudeSession {
+  onMessage(callback: (_: any) => void): ClaudeSession {
     this.on('message', callback);
     return this;
   }
@@ -561,7 +561,7 @@ First, read your role documentation, then use read-chat to check for any existin
         
         this.emit('history-loaded', { count: this.history.length });
       }
-    } catch (_error) {
+    } catch {
       // File doesn't exist, start fresh
       this.history = [];
     }
@@ -668,8 +668,9 @@ export class SessionManager implements AgentRegistry {
   }
 
   // Implement AgentRegistry interface
-  getAgentByName(name: string): { query(_prompt: string): void } | undefined {
-    return this.getSessionByName(name);
+  getAgentByName(name: string): { query(_: string): void } | undefined {
+    const session = this.getSessionByName(name);
+    return session;
   }
 
   listSessions(): SessionInfo[] {
@@ -776,42 +777,4 @@ export function createSessionManager(): SessionManager {
 }
 
 // ====================== DEMO ======================
-
-async function _demoClaudeSession() {
-  console.log('🎭 Claude Session Demo\n');
-
-  const session = createSession()
-    .withModel('sonnet')
-    .skipPermissions();
-
-  // Event listeners
-  session.on('session-started', ({ sessionId }) => {
-    console.log(`🆕 Session started: ${sessionId}`);
-  });
-
-  session.on('message-sent', (message) => {
-    console.log(`📤 User: ${message.content.slice(0, 60)}...`);
-  });
-
-  session.on('message-received', (message) => {
-    console.log(`📥 Assistant: ${message.content.slice(0, 60)}...`);
-    if (message.duration) {
-      console.log(`   ⏱️  Duration: ${message.duration}ms`);
-    }
-  });
-
-  try {
-    console.log('=== Test: Transparent Session Management ===');
-    
-    // Demo removed - would need complete rewrite for event-based API
-    
-    console.log('\n=== Session Status ===');
-    console.log(JSON.stringify(session.getStatus(), null, 2));
-
-  } catch (error) {
-    console.error('❌ Demo failed:', error instanceof Error ? error.message : String(error));
-  }
-}
-
-// Uncomment to run demo
-// demoClaudeSession();
+// Demo removed to eliminate unused code warnings

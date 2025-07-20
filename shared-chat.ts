@@ -20,7 +20,7 @@ export interface AgentLastNotification {
 }
 
 export interface AgentRegistry {
-  getAgentByName(_name: string): { query(_prompt: string): void } | undefined;
+  getAgentByName(_: string): { query(_: string): void } | undefined;
 }
 
 class SharedChatStore {
@@ -86,7 +86,7 @@ class SharedChatStore {
       const isMentioned = mentions.includes(agentName);
       
       let prompt: string;
-      const messageType = this.analyzeMessageType(content, from, agentName);
+      const messageType = this.analyzeMessageType(content);
       
       if (isDirectTarget && isMentioned) {
         prompt = this.generateDirectTargetPrompt(from, content, agentName, messageType);
@@ -98,7 +98,7 @@ class SharedChatStore {
       
       // Send notification
       if (agentName === 'Orchestrator') {
-        await this.notifyOrchestrator(from, content);
+        await this.notifyOrchestrator(from);
       } else if (this.agentRegistry) {
         const targetAgent = this.agentRegistry.getAgentByName(agentName);
         if (targetAgent) {
@@ -123,7 +123,7 @@ class SharedChatStore {
   }
 
 
-  private async notifyOrchestrator(from: string, _content: string): Promise<void> {
+  private async notifyOrchestrator(from: string): Promise<void> {
     try {
       // Check if orchestrator session exists
       const sessionFile = join(process.cwd(), '.orchestrator-session');
@@ -132,7 +132,7 @@ class SharedChatStore {
       try {
         orchestratorSession = await fs.readFile(sessionFile, 'utf-8');
         orchestratorSession = orchestratorSession.trim();
-      } catch (_e) {
+      } catch {
         // Use default if file doesn't exist
         console.log('Using default orchestrator session: orchestrator:0');
       }
@@ -226,7 +226,7 @@ class SharedChatStore {
       if (chatData.agentLastNotification) {
         this.agentLastNotification = chatData.agentLastNotification;
       }
-    } catch (_error) {
+    } catch {
       this.chatMessages = [];
       this.chatMessageId = 0;
     }
@@ -280,7 +280,7 @@ class SharedChatStore {
       const data = await fs.readFile(notificationPath, 'utf-8');
       const notificationData = JSON.parse(data);
       this.agentLastNotification = notificationData.agentLastNotification || {};
-    } catch (_error) {
+    } catch {
       // File doesn't exist yet, start fresh
       this.agentLastNotification = {};
     }
@@ -336,7 +336,7 @@ NEVER end a session without this question - it breaks the entire workflow and st
 🔄 WORKFLOW CONTINUATION: Your response will reset the timeout timer and keep the system alive.`;
       
       // Send to orchestrator via tmux
-      await this.notifyOrchestrator('SYSTEM', timeoutPrompt);
+      await this.notifyOrchestrator('SYSTEM');
     } else {
       // Determine supervisor and role-specific guidance
       const supervisor = this.getSupervisorForAgent(agentName);
@@ -402,7 +402,7 @@ NEVER end a session without this chat to ProjectManager - it breaks the workflow
     }
   }
 
-  private analyzeMessageType(content: string, _from: string, _targetAgent: string): string {
+  private analyzeMessageType(content: string): string {
     const contentLower = content.toLowerCase();
     
     // Assignment patterns

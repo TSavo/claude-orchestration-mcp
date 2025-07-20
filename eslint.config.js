@@ -13,6 +13,20 @@ module.exports = [
         sourceType: 'module',
         project: './tsconfig.json',
       },
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tseslint,
@@ -23,8 +37,23 @@ module.exports = [
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
       'no-undef': 'off', // TypeScript handles this
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'prefer-const': 'warn',
       'no-var': 'error',
+    },
+  },
+  {
+    files: ['eslint.config.js'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'script',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off',
     },
   },
 ];

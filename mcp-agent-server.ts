@@ -257,7 +257,7 @@ export class MCPAgentServer {
     }
 
     // Create new agent with unique history file
-    const _session = this.sessionManager.createSession(name, {
+    this.sessionManager.createSession(name, {
       model,
       tools,
       skipPermissions: true, // Always skip permissions by default
@@ -381,7 +381,7 @@ export class MCPAgentServer {
     const { from, content, to } = args;
     
     try {
-      const _message = await sharedChat.sendChatMessage(from, content, to);
+      await sharedChat.sendChatMessage(from, content, to);
       
       const toText = to ? ` to @${to}` : '';
       return {

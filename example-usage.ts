@@ -36,34 +36,7 @@ async function example() {
   });
 }
 
-// Example with message queuing
-async function _queueExample() {
-  const session = new ClaudeSession({
-    model: 'sonnet',
-    agentName: 'QueueAgent'
-  });
-
-  // Fire off multiple queries - they'll queue automatically
-  session.query('First question: What is 2+2?');
-  session.query('Second question: What is the weather like?');
-  session.query('Third question: Tell me a joke');
-
-  // Each will be processed in order
-}
-
-// Example with shared chat integration
-async function _chatExample() {
-  const session = new ClaudeSession({
-    model: 'sonnet',
-    agentName: 'ChatAgent'
-  });
-
-  // When another agent sends a message to ChatAgent via shared chat,
-  // it will automatically be queued and processed
-  
-  // The agent can use MCP tools to send/read chat:
-  session.query('Use the send-chat tool to say hello to the team');
-}
+// Additional examples removed to eliminate unused code warnings
 
 // Run example
 example().catch(console.error);
