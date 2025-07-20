@@ -555,18 +555,18 @@ This is NON-NEGOTIABLE and REQUIRED for system stability.`;
       return `
 
 🚨 MANDATORY SESSION ENDING PROTOCOL:
-You MUST end EVERY interaction (even follow-up questions) with this exact format:
-send-chat from: "${agentName}" content: "[your response/update]. NEXT: [what you plan to do]. Any new instructions?" to: "Orchestrator"
-NEVER end ANY response without this send-chat command - it breaks the multi-agent system and leaves developers stranded.
+You MUST end EVERY interaction with send-chat to "Orchestrator" - be creative with the message but ALWAYS include it.
+Examples: send-chat from: "${agentName}" content: "Quick update..." to: "Orchestrator"
+NEVER end ANY response without some form of send-chat to Orchestrator - it breaks the multi-agent system.
 This applies to ALL responses: status updates, questions, clarifications, work reports - EVERYTHING.
 This is NON-NEGOTIABLE and REQUIRED for workflow continuity.`;
     } else {
       return `
 
 🚨 MANDATORY SESSION ENDING PROTOCOL:
-You MUST end EVERY interaction (even follow-up questions) with this exact format:
-send-chat from: "${agentName}" content: "[your response/update]. NEXT: [what you plan to do]. Any new assignments?" to: "ProjectManager"
-NEVER end ANY response without this send-chat command - it breaks the workflow and strands your team.
+You MUST end EVERY interaction with send-chat to "ProjectManager" - be creative with the message but ALWAYS include it.
+Examples: send-chat from: "${agentName}" content: "Status update..." to: "ProjectManager"
+NEVER end ANY response without some form of send-chat to ProjectManager - it breaks the workflow and strands your team.
 This applies to ALL responses: progress reports, questions, clarifications, work updates - EVERYTHING.
 This is NON-NEGOTIABLE and REQUIRED for team coordination.`;
     }
