@@ -7,13 +7,17 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { join } from 'path';
 import { SessionManager } from './claude-session.js';
 import { sharedChat } from './shared-chat.js';
+import { foundationalTools } from './mcp-tools/index.js';
+import { CommandRegistry } from './slash-commands/command-registry.js';
 
 export class MCPAgentServer {
   private server: Server;
   private sessionManager: SessionManager;
+  private commandRegistry: CommandRegistry;
 
   constructor(sessionManager: SessionManager) {
     this.sessionManager = sessionManager;
+    this.commandRegistry = new CommandRegistry(sessionManager);
     this.server = new Server(
       {
         name: "claude-agent-server",
@@ -30,174 +34,284 @@ export class MCPAgentServer {
   }
 
   private setupTools(): void {
-    // Tool 1: Make a new agent
+    // Register all tools (foundational tools + slash command prompt generators)
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
+        // Foundational MCP Tools
+        ...foundationalTools,
+        
+        // Slash Command Prompt Generators (these return prompt strings, not execute directly)
         {
-          name: "make-new-agent",
-          description: "Create a new Claude agent with a given name. USAGE: Only for Orchestrator and Project Managers creating team members. Agents should be given themed names (Matrix, Ex Machina, etc.) and will receive comprehensive role-specific briefings automatically. Each agent gets individual history files for conversation persistence.",
+          name: "scale",
+          description: "Intelligently scale team up or down based on workload and bottlenecks. SMART DEFAULTS: Auto-detects existing team theme, skill gaps, and optimal team size. BEHAVIOR: Analyzes current team capacity, identifies bottlenecks, and adds/removes agents with appropriate skills while maintaining team cohesion.",
           inputSchema: {
             type: "object",
             properties: {
-              name: { type: "string", description: "Themed name for the new agent (e.g. Neo, Trinity, Morpheus for Matrix theme)" },
-              model: { type: "string", enum: ["sonnet", "haiku", "opus"], default: "sonnet", description: "AI model - sonnet recommended for development work" },
-              tools: { type: "array", items: { type: "string" }, description: "MCP tools to enable - leave empty for default set" }
-            },
-            required: ["name"]
-          }
-        },
-        {
-          name: "send-agent-command",
-          description: "Send a direct command to an existing agent. EMERGENCY USE ONLY: For debugging unresponsive agents or system recovery. ALL normal communication including briefings MUST use send-chat with 'to:' parameter. This bypasses the chat system and should be avoided - prefer send-chat for all regular communication including initial briefings.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent (emergency debugging only)" },
-              command: { type: "string", description: "Emergency command - prefer send-chat for normal communication" }
-            },
-            required: ["agentName", "command"]
-          }
-        },
-        {
-          name: "get-last-messages",
-          description: "Get the last X messages from an agent",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent" },
-              count: { type: "number", description: "Number of messages to retrieve", default: 10 }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "stop-agent",
-          description: "Stop current request for an agent",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent to stop" }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "delete-agent",
-          description: "Delete an agent permanently from the system. LIFECYCLE MANAGEMENT: Use when projects complete or switching to diverse tasks. Fresh agents provide better focus and avoid context contamination. ONLY delete agents when: 1) Project fully complete, 2) Switching to different technology/domain, 3) Agent becomes confused/unresponsive. Keep agents for same-project continuation.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent to permanently remove - this will delete their conversation history" }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "send-chat",
-          description: "Send a message to the shared agent chat system. PRIMARY COMMUNICATION TOOL. CRITICAL SESSION ENDING FORMATS (MANDATORY): Orchestrator asks user 'What would you like me to do next?', ProjectManager sends 'SESSION END: [summary]. NEXT: [plans]. Any new instructions?' to Orchestrator, Developer sends 'SESSION END: [work]. NEXT: [plans]. Any new assignments?' to ProjectManager. TASK ASSIGNMENTS must include 'REPLY TO:' and 'DO NOT FINISH' instructions. NEVER end a session without following required format for your role.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              from: { type: "string", description: "Your agent name - always identify yourself correctly" },
-              content: { type: "string", description: "Message content - be specific and include context. For assignments include 'REPLY TO:' and 'DO NOT FINISH' instructions." },
-              to: { type: "string", description: "Target agent name for direct communication (enables focused collaboration) - REQUIRED for session endings and assignments" }
-            },
-            required: ["from", "content"]
-          }
-        },
-        {
-          name: "read-chat",
-          description: "Read messages from the shared agent chat system and get critical session ending reminders. ESSENTIAL BEHAVIOR: Use this tool when starting work, when notified, and regularly to check for targeted messages. CRITICAL: This tool provides mandatory session ending instructions at the end of every response - YOU MUST follow these before ending your session to prevent system breakdown. Use to understand current project status, respond to @mentions, and get explicit guidance on how to properly end your session.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Your agent name - used to filter relevant messages and show session ending requirements for your role" },
-              limit: { type: "number", description: "Number of recent messages to retrieve - use 10-20 for recent context, 50+ for project review", default: 20 }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "clear-agent",
-          description: "Clear an agent's history while keeping agent alive",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent to clear" }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "summarize-agent",
-          description: "Create a summary of an agent's work history",
-          inputSchema: {
-            type: "object",
-            properties: {
-              agentName: { type: "string", description: "Name of the agent to summarize" }
-            },
-            required: ["agentName"]
-          }
-        },
-        {
-          name: "assemble",
-          description: "Prompt the orchestrator to assemble a team for a project",
-          inputSchema: {
-            type: "object",
-            properties: {
-              projectName: { type: "string", description: "Name of the project" },
-              projectType: { type: "string", description: "Type of project (web app, API, mobile, etc.)", default: "web app" },
-              teamSize: { type: "number", description: "Number of developers needed", default: 3 },
-              workingDirectory: { type: "string", description: "Full path to project directory" },
-              requirements: { type: "string", description: "Brief overview of project requirements" }
-            },
-            required: ["projectName", "workingDirectory", "requirements"]
-          }
-        },
-        {
-          name: "checkup",
-          description: "Prompt the orchestrator to check team status and take action",
-          inputSchema: {
-            type: "object",
-            properties: {
-              focus: { type: "string", description: "Specific area to check (team status, progress, blockers, etc.)", default: "overall status" }
+              direction: { type: "string", enum: ["up", "down"], description: "Scale direction - up to add agents, down to remove", default: "up" },
+              count: { type: "number", description: "Number of agents to add/remove - auto-detects optimal count if not specified", default: 0 },
+              skills: { type: "array", items: { type: "string" }, description: "Specific skills needed - auto-detects from bottlenecks if not specified", default: [] },
+              theme: { type: "string", description: "Team theme for new agents - uses existing team theme if not specified", default: "existing" },
+              reason: { type: "string", description: "Reason for scaling - helps with agent briefing", default: "workload-optimization" }
             }
           }
         },
         {
-          name: "set-timeout",
-          description: "Configure the agent timeout duration",
+          name: "deploy",
+          description: "Deploy pre-configured team templates instantly. SMART DEFAULTS: Uses existing project structure, detects optimal template, maintains current theme. TEMPLATES: full-stack, frontend-only, api-team, ml-team, devops-team. BEHAVIOR: Creates complete team with appropriate roles and immediately briefs them on project context.",
           inputSchema: {
             type: "object",
             properties: {
-              minutes: { type: "number", description: "Timeout duration in minutes", default: 30 }
-            },
-            required: ["minutes"]
+              template: { type: "string", enum: ["full-stack", "frontend-only", "api-team", "ml-team", "devops-team", "auto"], description: "Team template - auto-detects from codebase if not specified", default: "auto" },
+              theme: { type: "string", description: "Team theme (Matrix, LOTR, StarWars, Cyberpunk, etc.) - uses existing or auto-selects", default: "auto" },
+              project: { type: "string", description: "Project name - uses current directory name if not specified", default: "current" },
+              lead: { type: "string", description: "Team lead name - auto-generates themed name if not specified", default: "auto" },
+              workingDirectory: { type: "string", description: "Project directory - uses current directory if not specified", default: "current" }
+            }
           }
         },
         {
-          name: "register-agent-activity",
-          description: "Manually register agent activity to reset timeout",
+          name: "focus",
+          description: "Refocus existing team on specific priorities or areas. SMART DEFAULTS: Targets all active agents, auto-detects urgent priorities, maintains current project context. BEHAVIOR: Sends focused guidance to team while preserving ongoing work and communication chains.",
           inputSchema: {
             type: "object",
             properties: {
-              agentName: { type: "string", description: "Name of the agent to register activity for" }
-            },
-            required: ["agentName"]
+              priority: { type: "string", description: "What to focus on - blockers, security, performance, features, bugs, etc.", default: "blockers" },
+              agents: { type: "array", items: { type: "string" }, description: "Specific agents to focus - uses all active agents if not specified", default: [] },
+              context: { type: "string", description: "Why this focus shift - auto-detects from recent activity if not specified", default: "auto" },
+              urgency: { type: "string", enum: ["low", "normal", "high", "critical"], description: "Priority level", default: "normal" }
+            }
           }
         },
         {
-          name: "init",
-          description: "Initialize project by comprehensively scanning codebase and creating professional steering documents in specs/ directory. BEHAVIOR: Performs deep codebase analysis, identifies existing features, creates specs/project-overview/, specs/existing-features/, and specs/proposed-features/ with requirements.md, design.md, and tasks.md for each. Creates development-standards.md with project conventions. CRITICAL: Creates production-ready documentation for immediate team use.",
+          name: "restart",
+          description: "Restart unresponsive or stuck agents while preserving work context. SMART DEFAULTS: Only targets unresponsive agents, preserves conversation history, notifies team of restarts. BEHAVIOR: Identifies stuck agents, safely restarts them, and restores their context from recent work.",
           inputSchema: {
             type: "object",
             properties: {
-              projectName: { type: "string", description: "Official project name - will be used in all generated documentation" },
-              workingDirectory: { type: "string", description: "Full absolute path to project root directory - must contain source code" },
-              projectType: { type: "string", description: "Project type for context (web app, API, mobile, AI/ML, etc.) - affects analysis focus", default: "web app" },
-              analysisDepth: { type: "string", enum: ["quick", "comprehensive"], description: "Analysis depth - comprehensive recommended for new teams", default: "comprehensive" }
+              agents: { type: "array", items: { type: "string" }, description: "Specific agents to restart - auto-detects unresponsive agents if not specified", default: [] },
+              preserve: { type: "string", enum: ["history", "summary", "none"], description: "What to preserve during restart", default: "history" },
+              notify: { type: "boolean", description: "Notify team of restarts", default: true },
+              reason: { type: "string", description: "Reason for restart - helps with diagnostics", default: "unresponsive" }
+            }
+          }
+        },
+        {
+          name: "sprint",
+          description: "Start sprint planning with intelligent spec assignments. SMART DEFAULTS: Auto-prioritizes specs by dependencies, assigns to best-suited team members, uses existing project context. BEHAVIOR: Reviews existing specs, identifies gaps, creates assignment plan, and kicks off coordinated development cycle.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              duration: { type: "string", enum: ["1-week", "2-week", "flexible"], description: "Sprint length - flexible adapts to work complexity", default: "flexible" },
+              focus: { type: "string", description: "Sprint focus area - auto-detects from spec priorities if not specified", default: "auto" },
+              team: { type: "array", items: { type: "string" }, description: "Team members for sprint - uses all active agents if not specified", default: [] },
+              specs: { type: "array", items: { type: "string" }, description: "Specific specs to include - auto-selects ready specs if not specified", default: [] }
+            }
+          }
+        },
+        {
+          name: "review",
+          description: "Trigger comprehensive project review across all workstreams. SMART DEFAULTS: Reviews all active specs, code quality, team performance, and identifies improvement areas. BEHAVIOR: Coordinates systematic review by appropriate team members and consolidates findings.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              scope: { type: "string", enum: ["code", "specs", "team", "architecture", "all"], description: "Review scope - all covers everything", default: "all" },
+              depth: { type: "string", enum: ["quick", "thorough", "deep"], description: "Review depth", default: "thorough" },
+              reviewers: { type: "array", items: { type: "string" }, description: "Specific reviewers - auto-assigns based on expertise if not specified", default: [] },
+              format: { type: "string", enum: ["summary", "detailed", "actionable"], description: "Output format", default: "actionable" }
+            }
+          }
+        },
+        {
+          name: "handoff",
+          description: "Prepare comprehensive project handoff documentation. SMART DEFAULTS: Includes all specs, code documentation, team notes, and deployment instructions. BEHAVIOR: Consolidates project knowledge into professional handoff package for new teams or stakeholders.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              recipient: { type: "string", description: "Handoff recipient (new team, client, etc.) - affects documentation style", default: "new-team" },
+              format: { type: "string", enum: ["technical", "executive", "operational", "complete"], description: "Documentation format - complete includes all levels", default: "complete" },
+              timeline: { type: "string", enum: ["immediate", "planned", "future"], description: "Handoff timeline - affects urgency and detail level", default: "planned" }
+            }
+          }
+        },
+        {
+          name: "audit",
+          description: "Comprehensive security and quality audit prompt. SMART DEFAULTS: Reviews code security, spec completeness, architecture decisions, and team practices. BEHAVIOR: Coordinates systematic audit by appropriate specialists and provides actionable recommendations.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["security", "quality", "performance", "architecture", "complete"], description: "Audit type - complete covers all aspects", default: "complete" },
+              severity: { type: "string", enum: ["advisory", "standard", "strict"], description: "Audit strictness level", default: "standard" },
+              auditors: { type: "array", items: { type: "string" }, description: "Specific auditors - auto-assigns based on expertise if not specified", default: [] }
+            }
+          }
+        },
+        {
+          name: "release",
+          description: "Coordinate release preparation across team. SMART DEFAULTS: Reviews readiness, coordinates testing, prepares deployment checklist. BEHAVIOR: Ensures all release criteria met, coordinates team activities, and manages release process.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              version: { type: "string", description: "Release version - auto-increments if not specified", default: "auto" },
+              type: { type: "string", enum: ["patch", "minor", "major", "hotfix"], description: "Release type - affects preparation scope", default: "minor" },
+              environment: { type: "string", enum: ["staging", "production", "both"], description: "Target environment", default: "staging" },
+              checklist: { type: "boolean", description: "Generate release checklist", default: true }
+            }
+          }
+        },
+        {
+          name: "debug",
+          description: "Diagnose system issues and stuck agents. SMART DEFAULTS: Checks all agents, identifies communication breaks, analyzes recent errors. BEHAVIOR: Runs comprehensive system diagnostics and provides specific remediation steps.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              scope: { type: "string", enum: ["agents", "communication", "system", "performance", "all"], description: "Debug scope - all covers complete system", default: "all" },
+              target: { type: "array", items: { type: "string" }, description: "Specific agents to debug - checks all agents if not specified", default: [] },
+              depth: { type: "string", enum: ["surface", "deep", "comprehensive"], description: "Debug depth", default: "deep" }
+            }
+          }
+        },
+        {
+          name: "specs",
+          description: "Review all spec completion status across project. SMART DEFAULTS: Checks all specs in specs/ directory, identifies gaps, shows completion progress. BEHAVIOR: Provides comprehensive spec status dashboard with actionable next steps.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              view: { type: "string", enum: ["summary", "detailed", "gaps", "progress"], description: "View type - progress shows completion status", default: "progress" },
+              filter: { type: "string", enum: ["all", "incomplete", "ready", "blocked"], description: "Filter specs by status", default: "all" },
+              format: { type: "string", enum: ["table", "list", "dashboard"], description: "Output format", default: "dashboard" }
+            }
+          }
+        },
+        {
+          name: "bug",
+          description: "Create GitHub issue with smart labeling and assignment. SMART DEFAULTS: Auto-detects severity, assigns appropriate team members, uses project templates. BEHAVIOR: Generates comprehensive GitHub issue creation prompt with context analysis.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Issue title - auto-generates from context if not specified", default: "auto" },
+              severity: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Bug severity level", default: "medium" },
+              assignee: { type: "string", description: "GitHub username to assign - auto-assigns based on expertise if not specified", default: "auto" },
+              labels: { type: "array", items: { type: "string" }, description: "Issue labels - auto-detects appropriate labels if not specified", default: [] }
+            }
+          }
+        },
+        {
+          name: "bugs",
+          description: "Review GitHub issues with team workload analysis. SMART DEFAULTS: Reviews open issues, analyzes team capacity, identifies priorities. BEHAVIOR: Provides comprehensive issues dashboard with assignment recommendations.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              status: { type: "string", enum: ["open", "closed", "all"], description: "Issue status filter", default: "open" },
+              assignee: { type: "string", description: "Filter by assignee - shows all team issues if not specified", default: "all" },
+              priority: { type: "string", enum: ["all", "high", "critical"], description: "Priority filter", default: "all" }
+            }
+          }
+        },
+        {
+          name: "push",
+          description: "Git add/commit/push with validation and team coordination. SMART DEFAULTS: Auto-generates commit messages, validates changes, notifies team. BEHAVIOR: Provides comprehensive git workflow prompt with quality checks.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: { type: "string", description: "Commit message - auto-generates from changes if not specified", default: "auto" },
+              branch: { type: "string", description: "Target branch - uses current branch if not specified", default: "current" },
+              validate: { type: "boolean", description: "Run validation before push", default: true }
+            }
+          }
+        },
+        {
+          name: "pr",
+          description: "Create pull request with templates and reviewers. SMART DEFAULTS: Auto-generates PR description, assigns reviewers, uses project templates. BEHAVIOR: Provides comprehensive PR creation prompt with quality gates.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "PR title - auto-generates from branch/commits if not specified", default: "auto" },
+              base: { type: "string", description: "Base branch - uses main/master if not specified", default: "auto" },
+              reviewers: { type: "array", items: { type: "string" }, description: "GitHub usernames for review - auto-assigns based on changes if not specified", default: [] }
+            }
+          }
+        },
+        {
+          name: "branch",
+          description: "Create branches with naming conventions and tracking. SMART DEFAULTS: Uses project naming conventions, sets up tracking, notifies team. BEHAVIOR: Provides comprehensive branch creation prompt with workflow guidance.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Branch name - auto-generates from context if not specified", default: "auto" },
+              type: { type: "string", enum: ["feature", "bugfix", "hotfix", "release"], description: "Branch type for naming convention", default: "feature" },
+              base: { type: "string", description: "Base branch - uses main/master if not specified", default: "auto" }
+            }
+          }
+        },
+        {
+          name: "merge",
+          description: "Branch merging with conflict resolution and cleanup. SMART DEFAULTS: Detects merge strategy, handles conflicts, cleans up branches. BEHAVIOR: Provides comprehensive merge workflow prompt with conflict resolution guidance.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              source: { type: "string", description: "Source branch - uses current branch if not specified", default: "current" },
+              target: { type: "string", description: "Target branch - uses main/master if not specified", default: "auto" },
+              strategy: { type: "string", enum: ["merge", "squash", "rebase"], description: "Merge strategy", default: "merge" }
+            }
+          }
+        },
+        {
+          name: "gitstatus",
+          description: "Git repository status and branch analysis. SMART DEFAULTS: Shows comprehensive git state, branch comparisons, pending changes. BEHAVIOR: Provides detailed git status analysis with actionable recommendations.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              detail: { type: "string", enum: ["summary", "detailed", "comprehensive"], description: "Status detail level", default: "detailed" },
+              branches: { type: "boolean", description: "Include branch analysis", default: true }
+            }
+          }
+        },
+        {
+          name: "clone",
+          description: "Clone repositories with team setup options. SMART DEFAULTS: Sets up project structure, initializes team configuration. BEHAVIOR: Provides comprehensive repository cloning prompt with team onboarding.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "Repository URL to clone", required: true },
+              directory: { type: "string", description: "Target directory - uses repo name if not specified", default: "auto" },
+              setup: { type: "boolean", description: "Initialize team setup after clone", default: true }
             },
-            required: ["projectName", "workingDirectory"]
+            required: ["url"]
+          }
+        },
+        {
+          name: "stash",
+          description: "Git stash operations with team coordination. SMART DEFAULTS: Manages work-in-progress, coordinates with team, preserves context. BEHAVIOR: Provides comprehensive stash management prompt with workflow guidance.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["save", "pop", "apply", "drop", "list", "clear"], description: "Stash operation", default: "save" },
+              message: { type: "string", description: "Stash message - auto-generates timestamp if not specified", default: "auto" },
+              includeUntracked: { type: "boolean", description: "Include untracked files", default: false }
+            }
+          }
+        },
+        {
+          name: "status",
+          description: "Team communication analysis and status requests. SMART DEFAULTS: Reviews team chat activity, identifies silent agents, requests updates. BEHAVIOR: Provides comprehensive team status analysis with communication protocols.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              detail: { type: "string", enum: ["summary", "detailed", "comprehensive"], description: "Status detail level", default: "summary" },
+              hours: { type: "number", description: "Time window in hours for analysis", default: 24 },
+              format: { type: "string", enum: ["update", "dashboard", "report"], description: "Output format", default: "update" }
+            }
+          }
+        },
+        {
+          name: "help",
+          description: "Comprehensive help system explaining all tools and prompts. SMART DEFAULTS: Provides context-aware help, command examples, workflow guidance. BEHAVIOR: Explains two-tier architecture and proper tool usage.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              command: { type: "string", description: "Specific command to get help for - shows overview if not specified", default: "overview" },
+              category: { type: "string", enum: ["all", "project", "quality", "github", "git"], description: "Help category filter", default: "all" }
+            }
           }
         }
       ]
@@ -232,14 +346,84 @@ export class MCPAgentServer {
           return this.checkupTeam(args);
         case "set-timeout":
           return this.setTimeout(args);
-        case "register-agent-activity":
-          return this.registerAgentActivity(args);
+        case "schedule":
+          return this.scheduleTask(args);
+        case "listscheduled":
+          return this.listScheduledTasks(args);
+        case "cancelscheduled":
+          return this.cancelScheduledTask(args);
         case "init":
           return this.initProject(args);
+        // Slash command prompt generators (refactored to use command registry)
+        case "scale":
+          return this.executeSlashCommand('scale', args);
+        case "deploy":
+          return this.executeSlashCommand('deploy', args);
+        case "focus":
+          return this.executeSlashCommand('focus', args);
+        case "restart":
+          return this.executeSlashCommand('restart', args);
+        case "sprint":
+          return this.executeSlashCommand('sprint', args);
+        case "review":
+          return this.executeSlashCommand('review', args);
+        case "handoff":
+          return this.executeSlashCommand('handoff', args);
+        case "audit":
+          return this.executeSlashCommand('audit', args);
+        case "release":
+          return this.executeSlashCommand('release', args);
+        case "debug":
+          return this.executeSlashCommand('debug', args);
+        case "specs":
+          return this.executeSlashCommand('specs', args);
+        
+        // New slash command prompt generators
+        case "bug":
+          return this.executeSlashCommand('bug', args);
+        case "bugs":
+          return this.executeSlashCommand('bugs', args);
+        case "push":
+          return this.executeSlashCommand('push', args);
+        case "pr":
+          return this.executeSlashCommand('pr', args);
+        case "branch":
+          return this.executeSlashCommand('branch', args);
+        case "merge":
+          return this.executeSlashCommand('merge', args);
+        case "gitstatus":
+          return this.executeSlashCommand('gitstatus', args);
+        case "clone":
+          return this.executeSlashCommand('clone', args);
+        case "stash":
+          return this.executeSlashCommand('stash', args);
+        case "status":
+          return this.executeSlashCommand('status', args);
+        case "help":
+          return this.executeSlashCommand('help', args);
+        
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
     });
+  }
+
+  private async executeSlashCommand(commandName: string, args: any) {
+    try {
+      const command = this.commandRegistry.getCommand(commandName);
+      if (!command) {
+        throw new Error(`Slash command not found: ${commandName}`);
+      }
+      
+      return await command.execute(args);
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error executing /${commandName}: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
   }
 
   private async makeNewAgent(args: any) {
@@ -382,6 +566,9 @@ export class MCPAgentServer {
     
     try {
       await sharedChat.sendChatMessage(from, content, to);
+      
+      // Automatically register agent activity to reset timeout when sending chat
+      sharedChat.registerAgentActivity(from);
       
       const toText = to ? ` to @${to}` : '';
       return {
@@ -746,26 +933,216 @@ Use the chat system to coordinate with Project Managers and get status updates. 
     }
   }
 
-  private async registerAgentActivity(args: any) {
-    const { agentName } = args;
+
+  private async scheduleTask(args: any) {
+    const { delay, type, from, to, message } = args;
     
     try {
-      sharedChat.registerAgentActivity(agentName);
+      // Parse delay (5m, 30s, 2h, 1d) into milliseconds
+      const delayMs = this.parseDelay(delay);
+      const executeAt = Date.now() + delayMs;
+      
+      // Generate unique schedule ID
+      const scheduleId = `sched_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Store scheduled task
+      const scheduledTask = {
+        id: scheduleId,
+        type,
+        from: from || 'SYSTEM',
+        to,
+        message,
+        executeAt,
+        created: Date.now()
+      };
+      
+      // Schedule the timeout
+      const timeout = setTimeout(async () => {
+        try {
+          if (type === 'chat') {
+            await sharedChat.sendChatMessage(scheduledTask.from, message, to);
+          } else if (type === 'agent') {
+            // Send direct command to agent
+            await this.sendAgentCommand({ agentName: to, command: message });
+          }
+          
+          // Remove from scheduled tasks after execution
+          this.removeScheduledTask(scheduleId);
+        } catch (error) {
+          console.error(`Failed to execute scheduled task ${scheduleId}:`, error);
+          this.removeScheduledTask(scheduleId);
+        }
+      }, delayMs);
+      
+      // Store the task and timeout for management
+      this.storeScheduledTask(scheduleId, scheduledTask, timeout);
       
       return {
         content: [{
           type: "text",
-          text: `Registered activity for agent "${agentName}" - timeout timer reset.`
+          text: `Task scheduled (ID: ${scheduleId}): ${type} to ${to} in ${delay} (${new Date(executeAt).toISOString()})`
         }]
       };
     } catch (error) {
       return {
         content: [{
           type: "text",
-          text: `Failed to register activity: ${error instanceof Error ? error.message : String(error)}`
+          text: `Failed to schedule task: ${error instanceof Error ? error.message : String(error)}`
         }]
       };
     }
+  }
+
+  private async listScheduledTasks(args: any) {
+    const { filter = 'all', format = 'table' } = args;
+    
+    try {
+      const tasks = this.getScheduledTasks(filter);
+      
+      if (tasks.length === 0) {
+        return {
+          content: [{
+            type: "text",
+            text: `No scheduled tasks found${filter !== 'all' ? ` (filter: ${filter})` : ''}.`
+          }]
+        };
+      }
+      
+      let output = '';
+      if (format === 'table') {
+        output = `SCHEDULED TASKS (${tasks.length}):\n\n`;
+        output += `ID                | Type  | To          | Execute At               | Message\n`;
+        output += `------------------|-------|-------------|--------------------------|------------------\n`;
+        
+        tasks.forEach(task => {
+          const executeTime = new Date(task.executeAt).toISOString().replace('T', ' ').slice(0, 19);
+          const shortMessage = task.message.length > 15 ? task.message.slice(0, 15) + '...' : task.message;
+          output += `${task.id.padEnd(17)} | ${task.type.padEnd(5)} | ${task.to.padEnd(11)} | ${executeTime} | ${shortMessage}\n`;
+        });
+      } else if (format === 'detailed') {
+        output = `SCHEDULED TASKS (${tasks.length}):\n\n`;
+        tasks.forEach((task, i) => {
+          output += `${i + 1}. ${task.id}\n`;
+          output += `   Type: ${task.type}\n`;
+          output += `   From: ${task.from}\n`;
+          output += `   To: ${task.to}\n`;
+          output += `   Execute: ${new Date(task.executeAt).toISOString()}\n`;
+          output += `   Message: ${task.message}\n\n`;
+        });
+      } else {
+        output = `SCHEDULED TASKS (${tasks.length}):\n`;
+        tasks.forEach(task => {
+          const timeLeft = Math.max(0, task.executeAt - Date.now());
+          const timeLeftStr = this.formatTimeLeft(timeLeft);
+          output += `• ${task.id}: ${task.type} to ${task.to} in ${timeLeftStr}\n`;
+        });
+      }
+      
+      return {
+        content: [{
+          type: "text",
+          text: output.trim()
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to list scheduled tasks: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async cancelScheduledTask(args: any) {
+    const { scheduleId } = args;
+    
+    try {
+      const cancelled = this.removeScheduledTask(scheduleId);
+      
+      if (cancelled) {
+        return {
+          content: [{
+            type: "text",
+            text: `Scheduled task ${scheduleId} has been cancelled.`
+          }]
+        };
+      } else {
+        return {
+          content: [{
+            type: "text",
+            text: `Scheduled task ${scheduleId} not found. Use listscheduled to see active tasks.`
+          }]
+        };
+      }
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to cancel scheduled task: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  // Helper methods for scheduling
+  private scheduledTasks = new Map<string, { task: any, timeout: NodeJS.Timeout }>();
+
+  private parseDelay(delay: string): number {
+    const match = delay.match(/^(\d+)([smhd])$/);
+    if (!match) {
+      throw new Error(`Invalid delay format: ${delay}. Use format like 5m, 30s, 2h, 1d`);
+    }
+    
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    
+    const multipliers = {
+      's': 1000,           // seconds
+      'm': 60 * 1000,      // minutes  
+      'h': 60 * 60 * 1000, // hours
+      'd': 24 * 60 * 60 * 1000  // days
+    };
+    
+    return value * multipliers[unit as keyof typeof multipliers];
+  }
+
+  private storeScheduledTask(id: string, task: any, timeout: NodeJS.Timeout) {
+    this.scheduledTasks.set(id, { task, timeout });
+  }
+
+  private removeScheduledTask(id: string): boolean {
+    const scheduled = this.scheduledTasks.get(id);
+    if (scheduled) {
+      clearTimeout(scheduled.timeout);
+      this.scheduledTasks.delete(id);
+      return true;
+    }
+    return false;
+  }
+
+  private getScheduledTasks(filter: string): any[] {
+    const tasks: any[] = [];
+    this.scheduledTasks.forEach(({ task }) => {
+      if (filter === 'all' || task.type === filter) {
+        tasks.push(task);
+      }
+    });
+    return tasks.sort((a, b) => a.executeAt - b.executeAt);
+  }
+
+  private formatTimeLeft(ms: number): string {
+    if (ms <= 0) return 'overdue';
+    
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+    return `${seconds}s`;
   }
 
   private async initProject(args: any) {
