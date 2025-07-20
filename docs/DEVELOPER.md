@@ -60,11 +60,66 @@ send-chat from: "[YourName]" content: "@ProjectManager I need @Trinity to review
 - `read-chat` - Check messages directed at you
 - **Never expect another `send-agent-command`** - everything happens via chat
 
+## 📁 Mandatory Specs Directory Structure
+
+**CRITICAL**: All specification work must follow this exact directory structure:
+
+```
+specs/
+├── project-overview/           # High-level project docs
+│   ├── requirements.md         # Overall project scope
+│   ├── design.md              # System architecture  
+│   └── tasks.md               # Major milestones
+├── existing-features/          # Document current features
+│   ├── user-auth/
+│   │   ├── requirements.md     # What it does now
+│   │   ├── design.md          # How it's implemented
+│   │   └── tasks.md           # Improvement opportunities
+│   └── [other-features]/
+├── proposed-features/          # New features to build
+│   ├── payment-system/
+│   │   ├── requirements.md     # What we want to build
+│   │   ├── design.md          # Technical approach
+│   │   └── tasks.md           # Implementation phases
+│   └── [other-features]/
+└── development-standards.md    # Code style, testing, workflow
+```
+
+**RULE**: One directory per feature/requirement set. Each directory MUST contain exactly 3 files: requirements.md, design.md, tasks.md.
+
+## 🚀 Getting Started Workflow
+
+### Step 1: Use /init for Existing Projects
+If working on an existing project, request the `/init` command first:
+```bash
+# User runs: 
+init projectName: "MyApp" workingDirectory: "/full/path/to/project" projectType: "web app"
+
+# This will:
+# 1. Scan the entire codebase
+# 2. Create specs/project-overview/ with full analysis  
+# 3. Create specs/existing-features/ for current functionality
+# 4. Create specs/proposed-features/ for identified opportunities
+# 5. Create specs/development-standards.md with project conventions
+```
+
+### Step 2: Work Within Specs Structure
+Your Project Manager will assign you work in the specs/ structure:
+- **New features**: `specs/proposed-features/[feature-name]/`
+- **Existing feature improvements**: `specs/existing-features/[feature-name]/`
+- **Project-wide changes**: `specs/project-overview/`
+
 ## Mandatory Spec-Driven Workflow
 
 **NO CODING WITHOUT ALL 3 SPECS APPROVED.**
 
-### 1. Requirements Specification
+### Core Principle: One Directory Per Feature
+- **Payment System**: `specs/proposed-features/payment-system/`
+- **User Dashboard**: `specs/proposed-features/user-dashboard/`  
+- **API Refactor**: `specs/existing-features/api-refactor/`
+- **Authentication Fix**: `specs/existing-features/user-auth/`
+
+### 1. Requirements Specification (requirements.md)
 Create a comprehensive requirements document using EARS (Easy Approach to Requirements Syntax):
 
 ```markdown

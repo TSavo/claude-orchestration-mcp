@@ -92,6 +92,7 @@ User → Orchestrator → Project Manager → Developer(s)
 ```
 
 ## 🎬 Quick Tips
+- **Use `/init` command** - Scan existing projects and create steering documents automatically
 - **Creative team names** - don't default to Ocean's Eleven
 - **Commit every 30 minutes** with meaningful git messages  
 - **Auto-notifications** - chat messages trigger alerts to recipients

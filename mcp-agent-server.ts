@@ -185,6 +185,20 @@ export class MCPAgentServer {
             },
             required: ["agentName"]
           }
+        },
+        {
+          name: "init",
+          description: "Initialize project by scanning codebase and creating steering documents in specs/",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectName: { type: "string", description: "Name of the project" },
+              workingDirectory: { type: "string", description: "Full path to project directory to scan" },
+              projectType: { type: "string", description: "Type of project (web app, API, mobile, etc.)", default: "web app" },
+              analysisDepth: { type: "string", enum: ["quick", "comprehensive"], description: "Depth of codebase analysis", default: "comprehensive" }
+            },
+            required: ["projectName", "workingDirectory"]
+          }
         }
       ]
     }));
@@ -220,6 +234,8 @@ export class MCPAgentServer {
           return this.setTimeout(args);
         case "register-agent-activity":
           return this.registerAgentActivity(args);
+        case "init":
+          return this.initProject(args);
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -691,6 +707,173 @@ Use the chat system to coordinate with Project Managers and get status updates. 
         content: [{
           type: "text",
           text: `Failed to register activity: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async initProject(args: any) {
+    const { projectName, workingDirectory, projectType = "web app", analysisDepth = "comprehensive" } = args;
+    
+    try {
+      const initPrompt = `PROJECT INITIALIZATION REQUEST:
+
+Project: ${projectName}
+Type: ${projectType}
+Working Directory: ${workingDirectory}
+Analysis Depth: ${analysisDepth}
+
+Please perform a comprehensive project initialization by:
+
+1. **SCAN THE CODEBASE** (in ${workingDirectory}):
+   - Analyze project structure, technologies, and architecture
+   - Identify existing features and functionality
+   - Review package.json/dependencies for tech stack
+   - Examine existing documentation and README files
+   - Assess code quality and patterns
+
+2. **CREATE DETAILED STEERING DOCUMENTS** in specs/ directory:
+
+   **MANDATORY: specs/project-overview/requirements.md**
+   Include these sections:
+   - Project Purpose: What problem this solves, target users, success metrics
+   - Functional Requirements: Core features using EARS syntax (WHEN/THEN/IF)
+   - Non-Functional Requirements: Performance, security, scalability needs
+   - Business Logic: Key rules, constraints, validation requirements
+   - Integration Requirements: External APIs, databases, third-party services
+   - User Types & Permissions: Roles, access levels, authentication needs
+   - Data Requirements: What data is stored, processed, transmitted
+   - Compliance: Security standards, privacy requirements, regulatory needs
+
+   **MANDATORY: specs/project-overview/design.md**
+   Include these sections:
+   - System Architecture: High-level component diagram and data flow
+   - Technology Stack: Languages, frameworks, databases, cloud services
+   - Database Design: Schema, relationships, indexing strategy
+   - API Design: Endpoints, request/response formats, authentication
+   - Security Architecture: Authentication, authorization, data protection
+   - Performance Strategy: Caching, optimization, scaling approach
+   - Error Handling: Logging, monitoring, alerting, recovery procedures
+   - Deployment Architecture: Environments, CI/CD pipeline, infrastructure
+
+   **MANDATORY: specs/project-overview/tasks.md**
+   Include these sections:
+   - Development Phases: Ordered list of major development milestones
+   - Feature Priorities: Which features to build first and why
+   - Dependencies: What needs to be built before other features
+   - Resource Requirements: Team size, skills needed, timeline estimates
+   - Risk Assessment: Technical risks, mitigation strategies
+   - Testing Strategy: Unit, integration, end-to-end testing plans
+   - Launch Plan: Deployment strategy, rollback plans, monitoring
+
+   **FOR EACH EXISTING FEATURE: specs/existing-features/[feature-name]/**
+   Create requirements.md with:
+   - Current Functionality: Exactly what the feature does now
+   - User Workflows: How users interact with this feature
+   - Business Rules: Logic, validation, constraints currently implemented
+   - Data Handled: What data this feature creates, reads, updates, deletes
+   - Integration Points: How it connects to other features/systems
+   - Known Issues: Bugs, limitations, technical debt identified
+   
+   Create design.md with:
+   - Current Implementation: Technologies, patterns, architecture used
+   - Code Structure: Key files, classes, functions, database tables
+   - Performance Characteristics: Speed, resource usage, bottlenecks
+   - Security Implementation: How authentication, authorization works
+   - Data Flow: How data moves through the system for this feature
+   - External Dependencies: Libraries, APIs, services it relies on
+   
+   Create tasks.md with:
+   - Maintenance Tasks: Bug fixes, security updates, dependency updates
+   - Performance Improvements: Optimization opportunities identified
+   - Refactoring Opportunities: Code cleanup, modernization, simplification
+   - Feature Enhancements: Extensions or improvements to current functionality
+   - Technical Debt: Issues that should be addressed over time
+
+   **FOR EACH PROPOSED FEATURE: specs/proposed-features/[feature-name]/**
+   Create requirements.md with:
+   - Feature Purpose: What problem this solves, user value provided
+   - User Stories: Detailed scenarios using EARS syntax (WHEN/THEN/IF)
+   - Business Rules: Logic, validation, constraints to implement
+   - Success Criteria: How to measure if the feature works correctly
+   - Edge Cases: Unusual scenarios, error conditions, boundary cases
+   - Integration Needs: How it connects to existing features
+   
+   Create design.md with:
+   - Technical Approach: Architecture, patterns, technologies to use
+   - Database Changes: New tables, columns, indexes, migrations needed
+   - API Design: New endpoints, request/response formats
+   - Security Considerations: Authentication, authorization, data protection
+   - Performance Impact: Expected load, caching needs, optimization plans
+   - Testing Strategy: How to verify the feature works correctly
+   
+   Create tasks.md with:
+   - Implementation Phases: Ordered breakdown of development work
+   - Development Tasks: Specific coding tasks with time estimates
+   - Testing Tasks: Unit tests, integration tests, manual testing
+   - Documentation Tasks: README updates, API docs, user guides
+   - Deployment Tasks: Environment setup, configuration, rollout plan
+   - Dependencies: What must be completed before starting this feature
+
+3. **MANDATORY: specs/development-standards.md**
+   Include these detailed sections:
+   - Code Style: Formatting rules, naming conventions, file organization
+   - Architecture Patterns: Design patterns used, folder structure, module organization
+   - Testing Requirements: Coverage targets, testing frameworks, test categories
+   - Git Workflow: Branch strategy, commit message format, PR requirements
+   - Code Review Process: Review criteria, approval requirements, merge policies
+   - Documentation Standards: README format, code comments, API documentation
+   - Security Practices: Secure coding guidelines, vulnerability scanning, secrets management
+   - Performance Standards: Benchmarks, optimization requirements, monitoring
+   - Deployment Process: Build pipeline, environment promotion, rollback procedures
+   - Quality Gates: Automated checks, manual validation, release criteria
+
+4. **TEAM RECOMMENDATIONS**:
+   Based on project scope, recommend:
+   - Team size and roles needed
+   - Skill requirements for developers
+   - Project timeline estimates
+   - Priority order for feature development
+
+**SPECS DIRECTORY STRUCTURE:**
+Follow this exact structure for all spec documents:
+\`\`\`
+specs/
+├── project-overview/
+│   ├── requirements.md
+│   ├── design.md
+│   └── tasks.md
+├── existing-features/
+│   ├── [feature-name]/
+│   │   ├── requirements.md
+│   │   ├── design.md
+│   │   └── tasks.md
+├── proposed-features/
+│   ├── [feature-name]/
+│   │   ├── requirements.md
+│   │   ├── design.md
+│   │   └── tasks.md
+└── development-standards.md
+\`\`\`
+
+Navigate to the working directory and perform this comprehensive analysis. Create all steering documents to guide future development work.
+
+Remember: Use send-chat for all communication and ask me "What would you like me to do next?" when the initialization is complete.`;
+
+      // Send to orchestrator
+      await sharedChat.sendChatMessage('SYSTEM', initPrompt, 'Orchestrator');
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Project initialization request sent to Orchestrator for "${projectName}" in ${workingDirectory}. The orchestrator will scan the codebase and create comprehensive steering documents in specs/.`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to send initialization request: ${error instanceof Error ? error.message : String(error)}`
         }]
       };
     }
