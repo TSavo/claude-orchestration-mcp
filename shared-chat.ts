@@ -20,7 +20,7 @@ export interface AgentLastNotification {
 }
 
 export interface AgentRegistry {
-  getAgentByName(name: string): { query(prompt: string): void } | undefined;
+  getAgentByName(_name: string): { query(_prompt: string): void } | undefined;
 }
 
 class SharedChatStore {
@@ -123,7 +123,7 @@ class SharedChatStore {
   }
 
 
-  private async notifyOrchestrator(from: string, content: string): Promise<void> {
+  private async notifyOrchestrator(from: string, _content: string): Promise<void> {
     try {
       // Check if orchestrator session exists
       const sessionFile = join(process.cwd(), '.orchestrator-session');
@@ -132,7 +132,7 @@ class SharedChatStore {
       try {
         orchestratorSession = await fs.readFile(sessionFile, 'utf-8');
         orchestratorSession = orchestratorSession.trim();
-      } catch (e) {
+      } catch (_e) {
         // Use default if file doesn't exist
         console.log('Using default orchestrator session: orchestrator:0');
       }
@@ -190,7 +190,7 @@ class SharedChatStore {
     
     while ((match = mentionRegex.exec(content)) !== null) {
       const agentName = match[1];
-      if (!mentions.includes(agentName)) {
+      if (agentName && !mentions.includes(agentName)) {
         mentions.push(agentName);
       }
     }
@@ -226,7 +226,7 @@ class SharedChatStore {
       if (chatData.agentLastNotification) {
         this.agentLastNotification = chatData.agentLastNotification;
       }
-    } catch (error) {
+    } catch (_error) {
       this.chatMessages = [];
       this.chatMessageId = 0;
     }
@@ -280,7 +280,7 @@ class SharedChatStore {
       const data = await fs.readFile(notificationPath, 'utf-8');
       const notificationData = JSON.parse(data);
       this.agentLastNotification = notificationData.agentLastNotification || {};
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet, start fresh
       this.agentLastNotification = {};
     }
@@ -402,7 +402,7 @@ NEVER end a session without this chat to ProjectManager - it breaks the workflow
     }
   }
 
-  private analyzeMessageType(content: string, from: string, targetAgent: string): string {
+  private analyzeMessageType(content: string, _from: string, _targetAgent: string): string {
     const contentLower = content.toLowerCase();
     
     // Assignment patterns

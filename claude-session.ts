@@ -195,7 +195,7 @@ export class ClaudeSession extends EventEmitter {
   private messageQueue: string[] = [];
 
   // Convenience method for chaining
-  onMessage(callback: (message: any) => void): ClaudeSession {
+  onMessage(callback: (_message: any) => void): ClaudeSession {
     this.on('message', callback);
     return this;
   }
@@ -561,7 +561,7 @@ First, read your role documentation, then use read-chat to check for any existin
         
         this.emit('history-loaded', { count: this.history.length });
       }
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist, start fresh
       this.history = [];
     }
@@ -668,7 +668,7 @@ export class SessionManager implements AgentRegistry {
   }
 
   // Implement AgentRegistry interface
-  getAgentByName(name: string): { query(prompt: string): void } | undefined {
+  getAgentByName(name: string): { query(_prompt: string): void } | undefined {
     return this.getSessionByName(name);
   }
 
@@ -777,7 +777,7 @@ export function createSessionManager(): SessionManager {
 
 // ====================== DEMO ======================
 
-async function demoClaudeSession() {
+async function _demoClaudeSession() {
   console.log('🎭 Claude Session Demo\n');
 
   const session = createSession()

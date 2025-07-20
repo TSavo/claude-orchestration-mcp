@@ -37,7 +37,7 @@ async function example() {
 }
 
 // Example with message queuing
-async function queueExample() {
+async function _queueExample() {
   const session = new ClaudeSession({
     model: 'sonnet',
     agentName: 'QueueAgent'
@@ -52,7 +52,7 @@ async function queueExample() {
 }
 
 // Example with shared chat integration
-async function chatExample() {
+async function _chatExample() {
   const session = new ClaudeSession({
     model: 'sonnet',
     agentName: 'ChatAgent'

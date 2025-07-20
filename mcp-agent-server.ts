@@ -3,10 +3,10 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+// import { z } from 'zod'; // Currently unused
 import { join } from 'path';
-import { SessionManager, ClaudeSession } from './claude-session.js';
-import { sharedChat, ChatMessage } from './shared-chat.js';
+import { SessionManager } from './claude-session.js';
+import { sharedChat } from './shared-chat.js';
 
 export class MCPAgentServer {
   private server: Server;
@@ -257,7 +257,7 @@ export class MCPAgentServer {
     }
 
     // Create new agent with unique history file
-    const session = this.sessionManager.createSession(name, {
+    const _session = this.sessionManager.createSession(name, {
       model,
       tools,
       skipPermissions: true, // Always skip permissions by default
@@ -381,7 +381,7 @@ export class MCPAgentServer {
     const { from, content, to } = args;
     
     try {
-      const message = await sharedChat.sendChatMessage(from, content, to);
+      const _message = await sharedChat.sendChatMessage(from, content, to);
       
       const toText = to ? ` to @${to}` : '';
       return {
@@ -1255,137 +1255,6 @@ CRITICAL SUCCESS FACTORS:
 Remember: Use send-chat for all communication and ask me "What would you like me to do next?" when the comprehensive initialization is complete.
 
 This is a COMPREHENSIVE project initialization - not a casual overview. The quality of these steering documents will determine the success of all future development work. Make them exceptional.`;
-   - Review package.json/dependencies for tech stack
-   - Examine existing documentation and README files
-   - Assess code quality and patterns
-
-2. **CREATE DETAILED STEERING DOCUMENTS** in specs/ directory:
-
-   **MANDATORY: specs/project-overview/requirements.md**
-   Include these sections:
-   - Project Purpose: What problem this solves, target users, success metrics
-   - Functional Requirements: Core features using EARS syntax (WHEN/THEN/IF)
-   - Non-Functional Requirements: Performance, security, scalability needs
-   - Business Logic: Key rules, constraints, validation requirements
-   - Integration Requirements: External APIs, databases, third-party services
-   - User Types & Permissions: Roles, access levels, authentication needs
-   - Data Requirements: What data is stored, processed, transmitted
-   - Compliance: Security standards, privacy requirements, regulatory needs
-
-   **MANDATORY: specs/project-overview/design.md**
-   Include these sections:
-   - System Architecture: High-level component diagram and data flow
-   - Technology Stack: Languages, frameworks, databases, cloud services
-   - Database Design: Schema, relationships, indexing strategy
-   - API Design: Endpoints, request/response formats, authentication
-   - Security Architecture: Authentication, authorization, data protection
-   - Performance Strategy: Caching, optimization, scaling approach
-   - Error Handling: Logging, monitoring, alerting, recovery procedures
-   - Deployment Architecture: Environments, CI/CD pipeline, infrastructure
-
-   **MANDATORY: specs/project-overview/tasks.md**
-   Include these sections:
-   - Development Phases: Ordered list of major development milestones
-   - Feature Priorities: Which features to build first and why
-   - Dependencies: What needs to be built before other features
-   - Resource Requirements: Team size, skills needed, timeline estimates
-   - Risk Assessment: Technical risks, mitigation strategies
-   - Testing Strategy: Unit, integration, end-to-end testing plans
-   - Launch Plan: Deployment strategy, rollback plans, monitoring
-
-   **FOR EACH EXISTING FEATURE: specs/existing-features/[feature-name]/**
-   Create requirements.md with:
-   - Current Functionality: Exactly what the feature does now
-   - User Workflows: How users interact with this feature
-   - Business Rules: Logic, validation, constraints currently implemented
-   - Data Handled: What data this feature creates, reads, updates, deletes
-   - Integration Points: How it connects to other features/systems
-   - Known Issues: Bugs, limitations, technical debt identified
-   
-   Create design.md with:
-   - Current Implementation: Technologies, patterns, architecture used
-   - Code Structure: Key files, classes, functions, database tables
-   - Performance Characteristics: Speed, resource usage, bottlenecks
-   - Security Implementation: How authentication, authorization works
-   - Data Flow: How data moves through the system for this feature
-   - External Dependencies: Libraries, APIs, services it relies on
-   
-   Create tasks.md with:
-   - Maintenance Tasks: Bug fixes, security updates, dependency updates
-   - Performance Improvements: Optimization opportunities identified
-   - Refactoring Opportunities: Code cleanup, modernization, simplification
-   - Feature Enhancements: Extensions or improvements to current functionality
-   - Technical Debt: Issues that should be addressed over time
-
-   **FOR EACH PROPOSED FEATURE: specs/proposed-features/[feature-name]/**
-   Create requirements.md with:
-   - Feature Purpose: What problem this solves, user value provided
-   - User Stories: Detailed scenarios using EARS syntax (WHEN/THEN/IF)
-   - Business Rules: Logic, validation, constraints to implement
-   - Success Criteria: How to measure if the feature works correctly
-   - Edge Cases: Unusual scenarios, error conditions, boundary cases
-   - Integration Needs: How it connects to existing features
-   
-   Create design.md with:
-   - Technical Approach: Architecture, patterns, technologies to use
-   - Database Changes: New tables, columns, indexes, migrations needed
-   - API Design: New endpoints, request/response formats
-   - Security Considerations: Authentication, authorization, data protection
-   - Performance Impact: Expected load, caching needs, optimization plans
-   - Testing Strategy: How to verify the feature works correctly
-   
-   Create tasks.md with:
-   - Implementation Phases: Ordered breakdown of development work
-   - Development Tasks: Specific coding tasks with time estimates
-   - Testing Tasks: Unit tests, integration tests, manual testing
-   - Documentation Tasks: README updates, API docs, user guides
-   - Deployment Tasks: Environment setup, configuration, rollout plan
-   - Dependencies: What must be completed before starting this feature
-
-3. **MANDATORY: specs/development-standards.md**
-   Include these detailed sections:
-   - Code Style: Formatting rules, naming conventions, file organization
-   - Architecture Patterns: Design patterns used, folder structure, module organization
-   - Testing Requirements: Coverage targets, testing frameworks, test categories
-   - Git Workflow: Branch strategy, commit message format, PR requirements
-   - Code Review Process: Review criteria, approval requirements, merge policies
-   - Documentation Standards: README format, code comments, API documentation
-   - Security Practices: Secure coding guidelines, vulnerability scanning, secrets management
-   - Performance Standards: Benchmarks, optimization requirements, monitoring
-   - Deployment Process: Build pipeline, environment promotion, rollback procedures
-   - Quality Gates: Automated checks, manual validation, release criteria
-
-4. **TEAM RECOMMENDATIONS**:
-   Based on project scope, recommend:
-   - Team size and roles needed
-   - Skill requirements for developers
-   - Project timeline estimates
-   - Priority order for feature development
-
-**SPECS DIRECTORY STRUCTURE:**
-Follow this exact structure for all spec documents:
-\`\`\`
-specs/
-├── project-overview/
-│   ├── requirements.md
-│   ├── design.md
-│   └── tasks.md
-├── existing-features/
-│   ├── [feature-name]/
-│   │   ├── requirements.md
-│   │   ├── design.md
-│   │   └── tasks.md
-├── proposed-features/
-│   ├── [feature-name]/
-│   │   ├── requirements.md
-│   │   ├── design.md
-│   │   └── tasks.md
-└── development-standards.md
-\`\`\`
-
-Navigate to the working directory and perform this comprehensive analysis. Create all steering documents to guide future development work.
-
-Remember: Use send-chat for all communication and ask me "What would you like me to do next?" when the initialization is complete.`;
 
       // Send to orchestrator
       await sharedChat.sendChatMessage('SYSTEM', initPrompt, 'Orchestrator');

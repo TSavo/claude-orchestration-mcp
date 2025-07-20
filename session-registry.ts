@@ -105,11 +105,11 @@ export class SessionRegistryManager {
             const agentName = file.replace('.claude-agent-', '').replace('.json', '');
             return agentName;
           }
-        } catch (e) {
+        } catch (_e) {
           // Skip invalid files
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Directory read failed, continue with other methods
     }
 
