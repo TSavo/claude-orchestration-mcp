@@ -1,0 +1,48 @@
+claude-session.ts(374,51): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+claude-session.ts(386,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+claude-session.ts(458,23): error TS2339: Property 'using_existing_session' does not exist on type '{ agent_name: string | undefined; internal_session_id: string; stored_claude_session_id: string | null; prompt_preview: string; timestamp: string; method: string; }'.
+claude-session.ts(460,23): error TS2339: Property 'using_existing_session' does not exist on type '{ agent_name: string | undefined; internal_session_id: string; stored_claude_session_id: string | null; prompt_preview: string; timestamp: string; method: string; }'.
+claude-session.ts(475,15): error TS2322: Type 'Message' is not assignable to type 'SDKMessage'.
+  Type 'UserMessage' is not assignable to type 'SDKMessage'.
+    Property 'message' is missing in type 'UserMessage' but required in type '{ type: "user"; message: any; session_id: string; }'.
+claude-session.ts(495,23): error TS2339: Property 'captured_new_session_id' does not exist on type '{ agent_name: string | undefined; internal_session_id: string; stored_claude_session_id: string | null; prompt_preview: string; timestamp: string; method: string; }'.
+claude-session.ts(513,23): error TS2339: Property 'reusing_session_id' does not exist on type '{ agent_name: string | undefined; internal_session_id: string; stored_claude_session_id: string | null; prompt_preview: string; timestamp: string; method: string; }'.
+claude-session.ts(514,112): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(514,112): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(517,17): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(517,17): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(518,93): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(518,93): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(524,51): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+claude-session.ts(524,51): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(524,51): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(525,65): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(525,65): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(528,42): error TS2448: Block-scoped variable 'actualSessionId' used before its declaration.
+claude-session.ts(528,42): error TS2454: Variable 'actualSessionId' is used before being assigned.
+claude-session.ts(538,21): error TS2339: Property 'actual_query_session_id' does not exist on type '{ agent_name: string | undefined; internal_session_id: string; stored_claude_session_id: string | null; prompt_preview: string; timestamp: string; method: string; }'.
+claude-session.ts(582,31): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+claude-session.ts(584,53): error TS18046: 'parseError' is of type 'unknown'.
+claude-session.ts(619,46): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+claude-session.ts(636,42): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+claude-session.ts(640,53): error TS18046: 'parseError' is of type 'unknown'.
+claude-session.ts(735,32): error TS2345: Argument of type 'string' is not assignable to parameter of type 'ToolName'.
+claude-session.ts(960,27): error TS2341: Property 'loadHistory' is private and only accessible within class 'ClaudeSession'.
+mcp-agent-server.ts(297,13): error TS2339: Property 'cancel' does not exist on type 'ClaudeSession'.
+mcp-agent-server.ts(442,9): error TS7034: Variable 'currentSession' implicitly has type 'any[]' in some locations where its type cannot be determined.
+mcp-agent-server.ts(448,23): error TS7005: Variable 'currentSession' implicitly has an 'any[]' type.
+mcp-agent-server.ts(456,21): error TS7005: Variable 'currentSession' implicitly has an 'any[]' type.
+session-registry.ts(147,5): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+shared-chat.ts(67,32): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+shared-chat.ts(86,20): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+shared-chat.ts(91,20): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.

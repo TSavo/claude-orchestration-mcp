@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agent-orchestrator": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "./mcp-agent-server.ts"],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

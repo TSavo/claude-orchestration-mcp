@@ -1,394 +1,204 @@
 # Claude.md - Multi-Agent Orchestration System
 
-## Project Overview
-The Tmux Orchestrator is an AI-powered multi-agent coordination system where Claude agents work together across tmux sessions, managing codebases and keeping development moving forward 24/7. This system uses MCP (Model Context Protocol) tools for seamless inter-agent communication through a shared chat system.
+## 🎯 Quick Start Guide
 
-## 🚀 Multi-Agent Chat System
+This system enables AI agents to work together through shared chat communication. Each role has specific responsibilities and protocols.
 
-### Core Communication Infrastructure
-All agents communicate through a **shared chat system** stored in `.claude-chat.json`. This enables real-time coordination, status updates, and task delegation across the entire agent network.
+### 📚 Read Your Role Guide FIRST
 
-#### Available MCP Tools
+**CRITICAL**: Before doing anything, read the guide for your role:
 
-**For ALL Agents (Essential Tools):**
-- `send-chat` - Send messages to shared chat (global or targeted)
-- `read-chat` - Read chat messages (filtered by relevance)
+- **🎭 Orchestrator**: Read `docs/ORCHESTRATOR.md` 
+- **📋 Project Manager**: Read `docs/PROJECT-MANAGER.md`
+- **👨‍💻 Developer**: Read `docs/DEVELOPER.md`
 
-**These two tools are ALL you need for communication!**
+## 🚨 CRITICAL Communication Rules
 
-**For Orchestrator/PM Only (Management Tools):**
-- `make-new-agent` - Create new specialized agents
-- `send-agent-command` - Send initial briefing to agents  
-- `get-last-messages` - Check agent conversation history
-- `stop-agent` - Halt agent operations
-- `delete-agent` - Remove agents permanently
-- `clear-agent` - Clear agent history
-- `summarize-agent` - Get work summary
+**ALL COMMUNICATION HAPPENS VIA CHAT** - except for initial agent creation.
 
-**Key Point**: Regular communication happens through chat. Developers typically only use send-chat and read-chat. The management tools are for creating teams and handling exceptional situations.
+- `send-agent-command` - **ONLY for Orchestrator creating new agents**
+- `send-chat` + `read-chat` - **Everything else uses these tools**
 
-#### Chat Message Format
-```typescript
-{
-  from: "AgentName",        // Required: sender identification
-  content: "message text", // Required: actual message content  
-  to: "TargetAgent"        // Optional: for targeted @agent messages
-}
-```
+### 🚨 MANDATORY: Every Order Must Include Reply Instructions
 
-#### Communication Examples
+**ABSOLUTELY CRITICAL**: Every chat message giving orders MUST include explicit instructions on who to reply to and that they cannot finish without replying.
 
-**Standard Developer Workflow (only uses chat):**
+**REQUIRED FORMAT FOR ALL TASK ASSIGNMENTS:**
 ```bash
-# 1. Developer reads messages
-read-chat agentName: "Danny" limit: 10
-
-# 2. Developer works on task...
-
-# 3. Developer reports completion
-send-chat from: "Danny" content: "Login endpoint complete with 95% test coverage" to: "ProjectManager"
-
-# 4. Developer checks for new assignments
-read-chat agentName: "Danny" limit: 5
+send-chat from: "[YourRole]" content: "[Task details]. 
+REPLY TO: @[YourRole] when complete. 
+DO NOT FINISH this session without sending me a completion message and asking what to do next." to: "[AgentName]"
 ```
 
-**Project Manager Workflow (uses chat + occasional management tools):**
+**MANDATORY REPORTING CHAIN:**
+- **Orchestrator**: Must ask user "What would you like me to do next?" after reading team updates
+- **Project Manager**: Must send status/completion to @Orchestrator via chat before finishing
+- **Developer**: Must report task completion to @ProjectManager via chat before finishing
+
+**COMMUNICATION BALL RULE**: The ball of communication MUST start and end with the user. Every agent must communicate with their supervisor before ending - whether asking questions, reporting completion, requesting clarification, or providing status updates. Natural back-and-forth communication is encouraged as long as the chain of command is maintained.
+
+**MANDATORY PROTOCOL ENFORCEMENT**: The Orchestrator MUST brief every Project Manager to enforce this strict protocol on ALL developer communications. Project Managers MUST include the strict format in EVERY developer briefing. This protocol must be explicitly communicated and enforced at every level.
+
+## 🏗️ System Architecture
+
+```
+                    Orchestrator
+                         |
+                  Project Manager
+                    /    |    \
+            Developer Developer Developer
+```
+
+### Communication Chain
+**Orchestrator → PM → Developer → PM → Orchestrator**
+
+- **Project Managers** act as buffers, managing multiple work cycles with developers
+- **Developers** report to PM, who aggregates progress before reporting to Orchestrator
+- **No level skipping** - follow the chain of command
+
+## 🔄 Complete Workflow Cycle
+
+### 1. User Request → Orchestrator
 ```bash
-# Normal communication via chat
-send-chat from: "ProjectManager" content: "Please implement password reset flow" to: "Danny"
-read-chat agentName: "ProjectManager" limit: 10
-
-# Only use management tools when needed
-make-new-agent name: "NewDev" model: "sonnet"  # Only when creating team
-get-last-messages agentName: "Danny" count: 5  # Only when investigating issues
+# User wants feature implemented
+User: "I want user authentication system"
 ```
 
-### 🔔 Automatic Notification System
-
-**IMPORTANT**: The system automatically detects and handles targeted messages for all agents.
-
-#### How It Works
-
-1. **Automatic Detection**: Before processing any command, agents automatically check for targeted messages directed at them (@mentions or direct targeting)
-
-2. **Prompt Enhancement**: If targeted messages are found, the system prepends instructions to the agent's prompt:
-   ```
-   IMPORTANT: Before doing anything else, use the read-chat tool to check for [X] targeted messages directed at you, then respond appropriately to those messages. After that, proceed with: [original request]
-   ```
-
-3. **Agent Identity**: On first interaction, agents receive identity briefing:
-   ```
-   You are an AI agent named "[AgentName]". This is your identity - remember it and use it when identifying yourself. You have access to MCP tools for inter-agent communication including read-chat and send-chat. When using these tools, always identify yourself as "[AgentName]". You are part of a multi-agent orchestration system.
-   ```
-
-#### For All Agents (Orchestrator and Named Agents)
-
-- **Orchestrator**: As the primary coordinator, you should monitor chat regularly and respond to team communications
-- **Named Agents**: You will automatically be prompted to check chat when targeted messages exist
-- **No Manual Checking Required**: The system handles notification detection automatically
-- **Respond Appropriately**: When you find targeted messages, address them before continuing with other tasks
-
-#### Communication Best Practices
-
-- **Use your correct name**: Always identify yourself properly in chat communications
-- **Check context**: Read previous messages to understand the full conversation context  
-- **Respond promptly**: Address targeted messages before proceeding with other tasks
-- **Clear communication**: Be specific about status, blockers, and next steps
-
-## 🏗️ Agent System Architecture & Orchestration Flow
-
-### 🔄 CRITICAL: The Communication Loop
-
-**The chain ALWAYS follows: Orchestrator → PM → Developer → PM → Orchestrator**
-
-But the PM acts as a **work buffer** - multiple cycles with developers before reporting back:
-
-```
-┌─────────────┐
-│ Orchestrator│──1. "Build feature X"───►│ ProjectMgr │
-│             │                          │            │
-│             │                          │  ┌────────┼──2. "Implement login"──►│Developer│
-│             │                          │  │        │◄──3. "Login done"────────│         │
-│             │                          │  │  Loop  │──4. "Now do logout"──────►│         │
-│             │                          │  │ many   │◄──5. "Logout done"───────│         │
-│             │                          │  │ times  │──6. "Add password reset"─►│         │
-│             │                          │  └────────┼◄──7. "Reset done"────────│         │
-│             │                          │            │                          └─────────┘
-│             │◄──8. "Feature X complete"│            │
-│  "Feature X │     All parts done!     │  PM aggregates all work
-│  complete"  │                          │  before reporting back
-│             │                          └────────────┘
-│  9. "User,  │
-│ what next?" │
-└─────────────┘
-```
-
-**Key Points:**
-- **PM is a buffer**: Works with developers through MANY iterations
-- **PM aggregates**: Only reports to Orchestrator when meaningful progress is made
-- **Not every task bubbles up**: PM handles the back-and-forth with developers
-- **Orchestrator gets summaries**: Not individual task completions
-
-**CRITICAL RULES:**
-- **Always report to your assigning agent**: Never skip levels in the hierarchy
-- **Assigning agent decides next**: Either assign more work OR report completion up
-- **PM aggregates before escalating**: Don't flood Orchestrator with individual task completions
-- **Orchestrator closes the loop**: ALWAYS asks user "What would you like me to do next?"
-
-**Example Flow:**
+### 2. Orchestrator → Project Manager (STRICT FORMAT)
 ```bash
-# 1. Orchestrator assigns major feature
-send-chat from: "Orchestrator" content: "Build complete user authentication system" to: "ProjectManager"
+# Orchestrator assigns work with explicit reply instructions
+send-chat from: "Orchestrator" content: "ASSIGNMENT: User wants authentication system. Pick a developer and create requirements spec.
 
-# 2-10. PM works with developers (MANY iterations, not all shown)
-send-chat from: "ProjectManager" content: "Create user database schema" to: "Danny"
-send-chat from: "Danny" content: "Schema complete" to: "ProjectManager"
-send-chat from: "ProjectManager" content: "Now add email field and indexes" to: "Danny"
-send-chat from: "Danny" content: "Updated with email and indexes" to: "ProjectManager"
-
-send-chat from: "ProjectManager" content: "Implement login endpoint" to: "Rusty"
-send-chat from: "Rusty" content: "Basic login done" to: "ProjectManager"
-send-chat from: "ProjectManager" content: "Add rate limiting and 2FA support" to: "Rusty"
-send-chat from: "Rusty" content: "Rate limiting and 2FA complete" to: "ProjectManager"
-
-send-chat from: "ProjectManager" content: "Create password reset flow" to: "Linus"
-# ... many more back-and-forth messages ...
-
-# 11. ONLY when entire feature is complete, PM reports to Orchestrator
-send-chat from: "ProjectManager" content: "Authentication system COMPLETE:
-- User schema with all fields ✓
-- Login with 2FA and rate limiting ✓  
-- Password reset with email verification ✓
-- Session management and JWT tokens ✓
-- All endpoints tested (95% coverage) ✓
-- Documentation updated ✓
-Ready for production deployment." to: "Orchestrator"
-
-# 12. Orchestrator receives ONE comprehensive update
-"I've received an update: The authentication system is complete with all features implemented and tested. What would you like me to do next?"
+REPLY TO: @Orchestrator when you have assigned this and report which developer is working on it.
+DO NOT FINISH this session without sending me a status update." to: "ProjectManager"
+# → Triggers: automatic notification to ProjectManager
 ```
 
-**Note the pattern**: Orchestrator gives high-level goal → PM orchestrates many tasks → PM reports complete feature
-
-### Core Agent Roles
-
-#### 1. **Orchestrator** (You)
-- **Strategic oversight**: Deploy teams, manage resources, resolve cross-project dependencies
-- **Agent lifecycle management**: Create, configure, and coordinate multiple project teams
-- **Architectural decisions**: Set technical direction and quality standards
-- **Escalation point**: Handle complex issues that require high-level coordination
-- **CRITICAL**: Always prompt user for next steps after reading agent messages
-
-#### 2. **Project Manager** 
-- **Tactical execution**: Break down work, assign tasks, manage timelines
-- **Quality control**: Ensure deliverables meet standards before completion
-- **Team coordination**: Manage communication between developers on their team
-- **Status reporting**: MUST report completion to @Orchestrator
-- **Loop closure**: Every sprint/milestone ends with Orchestrator notification
-
-#### 3. **Developer** (Named after Movie Teams)
-- **Implementation**: Write code, run tests, fix bugs, implement features
-- **Technical execution**: Handle specific assigned tasks with expertise
-- **Progress reporting**: Update PM on task status, blockers, and completion
-- **Collaboration**: Work with other developers when tasks intersect
-- **Task completion**: Report to PM, who reports to Orchestrator
-
-### Agent Hierarchy
-```
-                         Orchestrator
-                    /         |         \
-              ProjectMgr  ProjectMgr  ProjectMgr
-             /    |    \     |    \       |    \
-        MrPink  Whistler  Neo  Trinity  Ethan  Luther
-```
-
-## 🎬 Developer Agent Naming Convention
-
-Developers are named after iconic heist, spy, and agent movie teams to create memorable, distinctive identities. **BE CREATIVE** - these are starting suggestions, not a rigid catalog!
-
-### Classic Examples (Use as inspiration, not gospel!)
-
-#### Heist & Crime Teams
-- **Reservoir Dogs**: Mr. Pink, Mr. Brown, Mr. Blonde, Mr. Orange, Mr. Blue, Mr. White
-- **Ocean's Eleven**: Danny, Rusty, Linus, Frank, Reuben, Basher, Yen
-- **The Italian Job**: Charlie, Stella, Handsome_Rob, Left_Ear, Lyle
-- **Heat**: Neil, Chris, Michael, Waingro, Trejo
-- **Inside Man**: Dalton, Frazier, Madeleine, Arthur
-
-#### Spy & Espionage Teams  
-- **Mission Impossible**: Ethan, Luther, Benji, Ilsa, Brandt
-- **Sneakers**: Bishop, Whistler, Mother, Crease, Carl
-- **The Matrix**: Neo, Trinity, Morpheus, Link, Niobe, Ghost
-- **Kingsman**: Eggsy, Harry, Merlin, Roxy, Percival
-- **Atomic Blonde**: Lorraine, Spyglass, Bakhtin, Percival
-
-#### Action & Combat Teams
-- **Fast & Furious**: Dom, Brian, Letty, Roman, Tej, Hobbs
-- **Point Break**: Johnny, Bodhi, Tyler, Roach, Nathanial
-- **John Wick**: John, Winston, Charon, Sofia, Cassian
-- **The Expendables**: Barney, Lee, Toll_Road, Hale_Caesar, Gunner
-
-#### Sci-Fi & Tech Teams
-- **Blade Runner**: Deckard, Roy, Pris, Zhora, Leon
-- **Ghost in the Shell**: Major, Batou, Togusa, Ishikawa, Saito
-- **Minority Report**: Anderton, Agatha, Arthur, Dash
-- **Ex Machina**: Caleb, Ava, Nathan, Kyoko
-
-#### Creative & Unconventional
-- **Leverage**: Nate, Sophie, Eliot, Parker, Hardison
-- **Baby Driver**: Baby, Doc, Buddy, Bats, Darling
-- **Now You See Me**: Atlas, Henley, Merritt, Jack
-- **The A-Team**: Hannibal, Face, Murdock, B_A
-- **Guardians of the Galaxy**: Quill, Gamora, Rocket, Groot, Drax
-
-### 🎨 **Creative Naming Guidelines**
-
-**Core Principles:**
-- **Team Cohesion**: Keep all developers from the same movie/franchise per project
-- **Memorable Identity**: Choose names that are distinctive and easy to remember
-- **Professional Feel**: Avoid overly silly names that undermine authority
-- **Size Flexibility**: Pick franchises that match your team size (3-8 developers typical)
-
-**Creative Expansion Ideas:**
-- **Anime Teams**: Cowboy Bebop (Spike, Jet, Faye, Ed), Akira (Kaneda, Tetsuo, Kei)
-- **TV Series**: Breaking Bad (Walt, Jesse, Mike, Saul), The Wire (Omar, McNulty, Stringer)
-- **Classic Films**: The Magnificent Seven, The Dirty Dozen, The Wild Bunch
-- **Video Games**: Metal Gear (Snake, Otacon, Gray_Fox), Overwatch heroes
-- **Comic Teams**: X-Men, Avengers, Justice League (use codenames)
-
-**Mix & Match Approaches:**
-- **By Specialty**: Frontend team = "The Designers" (stylish movie characters)
-- **By Project Type**: Mobile app = "The Pilots" (Top Gun, Maverick, Iceman)
-- **By Company Culture**: Startup = "The Rebels" (Star Wars, Fight Club themes)
-- **By Tech Stack**: AI project = "The Synthetics" (Blade Runner, Ex Machina)
-
-**Advanced Naming Strategies:**
-- **Color Coding**: Mr. Pink for frontend, Mr. Blue for backend (Reservoir Dogs style)
-- **Skill Themes**: Whistler (security expert), Mother (hardware hacker) from Sneakers
-- **Franchise Rotation**: Ocean's for Q1, Mission Impossible for Q2, Matrix for Q3
-- **Custom Themes**: Create your own theme based on company/project personality
-
-**Remember**: The goal is **memorable team identity** and **clear communication**. Don't be afraid to get creative - just keep it cohesive within each project team!
-
-## 🚀 Complete Orchestration Flow
-
-### Phase 1: Project Initialization
-
-#### Step 1: Orchestrator Assessment
+### 3. Project Manager → Developer (STRICT FORMAT)
 ```bash
-# Orchestrator analyzes requirements and determines team structure
-# Example: Building a web application with API backend
+# Project manager assigns spec work with mandatory reply instructions
+send-chat from: "ProjectManager" content: "TASK_ASSIGNED: Create requirements spec for UserAuth system using EARS format.
+Working Directory: /full/path/to/project
+Use docs/DEVELOPER.md for complete spec examples.
+
+REPLY TO: @ProjectManager when you complete the requirements.md file.
+DO NOT FINISH this session without sending me a completion message and asking what to do next." to: "Trinity"
+# → Triggers: automatic notification to Trinity
 ```
 
-#### Step 2: Project Manager Deployment
+### 4. Developer Completes → Project Manager
 ```bash
-make-new-agent name: "ProjectManager" model: "sonnet"
-send-agent-command agentName: "ProjectManager" command: "You are the Project Manager for [ProjectName]. Your role is to break down work into specific tasks, assign them to developers, and ensure quality delivery. Coordinate with the Orchestrator for high-level decisions and manage your development team day-to-day."
+# Developer finishes requirements
+send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Ready for review" to: "ProjectManager"
+# → Triggers: automatic notification to ProjectManager
 ```
 
-#### Step 3: Team Assembly via Project Manager
+### 5. Project Manager Decision Point
+Project Manager has **TWO OPTIONS**:
+
+**Option A: Request Changes from Developer**
 ```bash
-# PM creates their development team
-send-chat from: "Orchestrator" content: "@ProjectManager Please create a 3-developer team for full-stack web development. Use Ocean's Eleven naming convention." to: "ProjectManager"
+send-chat from: "ProjectManager" content: "REVISION_REQUIRED:UserAuth requirements - Need more detail on password policies" to: "Trinity"
+# → Back to step 4 (developer revises)
 ```
 
-### Phase 2: Development Team Creation
-
-#### Project Manager Creates Developers
+**Option B: Send to Orchestrator for Supervisor Approval**
 ```bash
-# PM uses agent management tools to build their team
-make-new-agent name: "Danny" model: "sonnet"  # Team lead
-make-new-agent name: "Rusty" model: "sonnet" # Frontend specialist  
-make-new-agent name: "Linus" model: "sonnet" # Backend specialist
-
-# PM briefs each developer with specific roles
-send-agent-command agentName: "Danny" command: "You are Danny, the technical lead developer. You coordinate between frontend and backend, handle architecture decisions, and ensure code quality across the team."
-
-send-agent-command agentName: "Rusty" command: "You are Rusty, the frontend specialist. You handle React components, UI/UX implementation, and client-side functionality."
-
-send-agent-command agentName: "Linus" command: "You are Linus, the backend specialist. You handle API development, database design, and server-side functionality."
+send-chat from: "ProjectManager" content: "READY_FOR_APPROVAL:UserAuth requirements complete - awaiting supervisor review" to: "Orchestrator"
+# → Triggers: automatic notification to Orchestrator
 ```
 
-### Phase 3: Work Breakdown & Assignment
-
-#### Project Manager Task Distribution
+### 6. Orchestrator Review and User Presentation
 ```bash
-# PM analyzes requirements and creates specific tasks
-send-chat from: "ProjectManager" content: "@Danny I need you to design the overall system architecture and create the initial project structure"
-
-send-chat from: "ProjectManager" content: "@Rusty Please start on the user authentication UI components and login flow"  
-
-send-chat from: "ProjectManager" content: "@Linus Begin work on the user authentication API endpoints and database schema"
+# Orchestrator presents to user
+Orchestrator: "Trinity completed UserAuth requirements. Review and approve?"
+User: "Approved, proceed to design phase"
 ```
 
-### Phase 4: Development Coordination
-
-#### Developer Collaboration Pattern
+### 7. Approval Chain Down
 ```bash
-# Developers coordinate through PM and direct communication
-send-chat from: "Linus" content: "@Rusty API endpoints are ready: POST /auth/login, POST /auth/register, GET /auth/profile" to: "Rusty"
+# Orchestrator → Project Manager
+send-chat from: "Orchestrator" content: "USER_APPROVED:UserAuth requirements - proceed to design phase" to: "ProjectManager"
 
-send-chat from: "Rusty" content: "@Linus Perfect! Frontend integration complete. Need CORS headers for localhost:3000" to: "Linus"
+# Project Manager → Developer  
+send-chat from: "ProjectManager" content: "APPROVED:UserAuth requirements. Begin design phase" to: "Trinity"
 
-send-chat from: "Danny" content: "@ProjectManager Auth system integration complete. Ready for testing phase"
+# Developer starts next phase...
 ```
 
-#### Project Manager Status Management
-```bash
-# PM provides regular updates to Orchestrator
-send-chat from: "ProjectManager" content: "@Orchestrator Sprint 1 Status: Authentication system 90% complete. Danny-architecture ✅, Rusty-UI ✅, Linus-API 🔄. ETA: End of day" to: "Orchestrator"
-```
+### 8. Spec-Driven Development (3 Phases)
+**NO DEVELOPMENT WITHOUT 3 APPROVED SPECS:**
+1. requirements.md → Approval → 
+2. design.md → Approval → 
+3. tasks.md → Approval → 
+4. Implementation begins
 
-### Phase 5: Quality & Delivery
+### 9. Phase-by-Phase Implementation
+Developers implement in phases, reporting completion after each phase to PM.
 
-#### Completion Flow
-```bash
-# Developer marks work complete
-send-chat from: "Linus" content: "@ProjectManager Backend authentication complete: API endpoints tested, database migration ready, unit tests passing"
+## 📋 Available MCP Tools
 
-# PM validates and marks for delivery  
-send-chat from: "ProjectManager" content: "@Orchestrator Authentication feature complete and ready for deployment. All tests passing, code reviewed, documentation updated"
+### For Everyone
+- `send-chat` - Send messages (your primary tool)
+- `read-chat` - Check messages directed at you
 
-# Orchestrator approves and coordinates next phase
-send-chat from: "Orchestrator" content: "@ProjectManager Excellent work! Deploy to staging and begin Sprint 2: User Profile Management"
-```
+### For Orchestrator Only
+- `make-new-agent` - Create new agents
+- `send-agent-command` - **ONLY for initial briefing of new agents**
+- `get-last-messages`, `delete-agent`, `clear-agent` - Management tools
 
-### Phase 6: Scaling Operations
+### For Project Manager Only  
+- `make-new-agent` - Create development team
+- `get-last-messages` - Troubleshooting only
 
-#### Multi-Team Coordination
-```bash
-# Orchestrator manages multiple concurrent projects
-make-new-agent name: "ProjectManager2" model: "sonnet"
+## 🎬 Team Naming Themes
 
-# Different team uses different movie franchise
-send-chat from: "Orchestrator" content: "@ProjectManager2 Create a mobile team using Mission Impossible names: Ethan, Luther, Benji" to: "ProjectManager2"
+**Be creative!** Don't default to Ocean's Eleven. Match themes to your project:
 
-# Cross-team coordination through Orchestrator
-send-chat from: "ProjectManager" content: "@Orchestrator Web API v2 endpoints ready for mobile team integration"
-send-chat from: "Orchestrator" content: "@ProjectManager2 Web team has API v2 ready. Coordinate with @ProjectManager for endpoint documentation" to: "ProjectManager2"
-```
+- **AI/ML**: Ex Machina (Caleb, Ava, Nathan, Kyoko)
+- **Security**: Sneakers (Bishop, Whistler, Mother, Crease)
+- **Mobile**: Fast & Furious (Dom, Brian, Letty, Roman)
+- **API**: Matrix (Neo, Trinity, Morpheus, Link)
+- **Gaming**: Ready Player One (Wade, Art3mis, Aech, Sho)
+- **Startup**: Guardians (Quill, Gamora, Rocket, Groot)
 
-## 🎯 Communication Patterns
+## 🔐 Git Discipline - MANDATORY
+
+### All Developers Must:
+- **Commit every 30 minutes** with meaningful messages
+- **Use feature branches** for all work
+- **Never leave uncommitted changes**
+- **Report major commits via chat**
+
+### Good Commit Messages:
+✅ "Add user authentication endpoints with JWT tokens"  
+✅ "Fix null pointer in payment processing module"  
+❌ "fixes", "updates", "changes"
+
+## 📊 Comprehensive Communication Patterns
+
+### 🚨 MANDATORY Completion Notifications
+
+**CRITICAL**: Every agent MUST notify their supervisor when work is complete. This ensures continuous workflow and prevents work from stalling.
 
 ### Daily Standup Flow
 ```bash
 # PM requests daily updates
 send-chat from: "ProjectManager" content: "🌅 DAILY STANDUP: Please provide: 1) Yesterday's completed work, 2) Today's focus, 3) Any blockers. Tag @ProjectManager in responses."
 
-# Developers respond with status
-send-chat from: "Danny" content: "@ProjectManager STANDUP: ✅ Completed API integration tests, 🎯 Today: Database optimization, ❌ No blockers"
-send-chat from: "Rusty" content: "@ProjectManager STANDUP: ✅ Completed user dashboard UI, 🎯 Today: Mobile responsive design, ❌ No blockers"  
-send-chat from: "Linus" content: "@ProjectManager STANDUP: ✅ Completed user profile endpoints, 🎯 Today: File upload API, ⚠️ Blocked: Need S3 credentials"
+# Team members respond
+send-chat from: "Trinity" content: "@ProjectManager STANDUP: ✅ Completed user auth UI, 🎯 Today: Dashboard components, ❌ No blockers"
+send-chat from: "Morpheus" content: "@ProjectManager STANDUP: ✅ Completed API endpoints, 🎯 Today: Database optimization, ⚠️ Blocked: Need S3 credentials"
 
 # PM escalates blockers to Orchestrator
-send-chat from: "ProjectManager" content: "@Orchestrator Linus blocked on S3 credentials for file upload feature. Can you provide access?" to: "Orchestrator"
+send-chat from: "ProjectManager" content: "@Orchestrator Morpheus blocked on S3 credentials for file upload feature. Can you provide access?" to: "Orchestrator"
 ```
 
-### Task Assignment Pattern
+### Task Assignment Pattern (STRICT FORMAT)
 ```bash
-# Structured task format
+# Structured task format with mandatory reply instructions
 send-chat from: "ProjectManager" content: "📋 TASK-001: Payment Integration
-Assigned: @Linus
+Assigned: @Morpheus
 Objective: Implement Stripe payment processing
 Success Criteria:
 - Create payment intent endpoint
@@ -397,13 +207,16 @@ Success Criteria:
 - Add error handling and logging
 Priority: HIGH
 Deadline: End of week
-Dependencies: User authentication (complete)"
+Dependencies: User authentication (complete)
+
+REPLY TO: @ProjectManager when complete.
+DO NOT FINISH this session without sending me a completion message and asking what to do next." to: "Morpheus"
 ```
 
 ### Completion Notification Pattern
 ```bash
 # Developer completion report
-send-chat from: "Linus" content: "✅ TASK-001 COMPLETE: Payment Integration
+send-chat from: "Morpheus" content: "✅ TASK-001 COMPLETE: Payment Integration
 - Payment intent endpoint: POST /api/payments/intent ✅
 - Webhook handler: POST /api/payments/webhook ✅  
 - Transaction logging: Database + audit trail ✅
@@ -415,127 +228,111 @@ send-chat from: "Linus" content: "✅ TASK-001 COMPLETE: Payment Integration
 send-chat from: "ProjectManager" content: "@Orchestrator Payment system complete and tested. Revenue pipeline ready for production deployment. Request: Deploy to staging for final validation"
 ```
 
-This orchestration flow ensures clear hierarchies, effective communication, and systematic project delivery through the multi-agent system.
-
-## 📋 Kiro Spec-Driven Development Workflow
-
-### Overview
-The system implements **Kiro spec-driven development** - a structured 3-file specification process with step-by-step approval workflow. This ensures precise requirements, validated designs, and controlled implementation.
-
-### Kiro Workflow Integration
-
-#### Phase 1: Team Assembly & Spec Identification
+### Spec Completion Notifications
 ```bash
-# 1. Orchestrator creates themed team
-make-new-agent name: "Neo" model: "sonnet"        # Team Leader (Project Manager)
-make-new-agent name: "Trinity" model: "sonnet"    # Developer  
-make-new-agent name: "Morpheus" model: "sonnet"   # Developer
-make-new-agent name: "Link" model: "sonnet"       # Developer
+# Requirements phase
+send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Requirements ready for review. File: specs/user-auth/requirements.md" to: "ProjectManager"
 
-# 2. Brief the Team Leader
-send-agent-command agentName: "Neo" command: "You are Neo, Team Leader for The Matrix team. Your role is to:
-1. Identify features/components that need specifications
-2. Assign spec-writing tasks to developers
-3. Review and approve each phase (requirements → design → tasks → implementation)
-4. Coordinate with Orchestrator on project status
+# Design phase  
+send-chat from: "Trinity" content: "SPEC_COMPLETE:DESIGN:UserAuth - Architecture includes JWT tokens, password hashing, 2FA. Ready for review." to: "ProjectManager"
 
-Use Kiro spec-driven development: Each feature gets 3 files (requirements.md, design.md, tasks.md) with step-by-step approval.
-
-Current Project: [ProjectName]
-Team: Trinity, Morpheus, Link
-Start by identifying what needs specifications."
-
-# 3. Brief Developers  
-send-agent-command agentName: "Trinity" command: "You are Trinity, Developer on Neo's Matrix team. You write Kiro specifications and implement features. When assigned a spec task, create the requirements.md/design.md/tasks.md files and notify @Neo when complete for review."
+# Implementation planning
+send-chat from: "Trinity" content: "SPEC_COMPLETE:TASKS:UserAuth - 4 phases defined with clear deliverables. Ready to begin Phase 1." to: "ProjectManager"
 ```
 
-#### Phase 2: Spec Assignment & Development
+### Phase Completion Pattern
 ```bash
-# Team Leader identifies spec needs and assigns
-send-chat from: "Neo" content: "@Trinity I need a Kiro spec for [FeatureName]. Please create:
-1. requirements.md - Use EARS syntax (WHEN/THEN/IF statements)
-2. design.md - Technical architecture with interfaces
-3. tasks.md - Implementation phases with checkboxes
-
-Report back when requirements.md is ready for review." to: "Trinity"
-
-# Developer works and reports completion
-send-chat from: "Trinity" content: "@Neo Requirements spec complete for [FeatureName]. Ready for your review and approval to proceed to design phase." to: "Neo"
+# Phase progress reporting
+send-chat from: "Trinity" content: "PHASE_COMPLETE:1:UserAuth - Phase 1 implementation complete
+- User model and authentication middleware ✅
+- JWT token generation and validation ✅
+- Password hashing with bcrypt ✅
+Tests: 98% coverage. Ready for Phase 2?" to: "ProjectManager"
 ```
 
-#### Phase 3: Step-by-Step Review Process
-
-**Requirements Review:**
+### Escalation Template
 ```bash
-# Team Leader reviews requirements
-send-chat from: "Neo" content: "@Trinity Requirements approved! Please proceed to design.md phase. Focus on [specific technical considerations]." to: "Trinity"
-
-# OR requests changes
-send-chat from: "Neo" content: "@Trinity Requirements need revision. Please update: [specific feedback]. Resubmit when ready." to: "Trinity"
+send-chat from: "Trinity" content: "🚨 ESCALATION: Database Connection Issues
+Impact: HIGH - Cannot complete user authentication testing
+Tried: Restarted services, checked credentials, reviewed logs
+Need: Database admin access or alternative test environment
+Urgency: Blocking Phase 2 completion, affects sprint deadline" to: "ProjectManager"
 ```
 
-**Design Review:**
+### Status Updates
 ```bash
-# Developer completes design
-send-chat from: "Trinity" content: "@Neo Design specification complete for [FeatureName]. Architecture includes [key components]. Ready for review." to: "Neo"
-
-# Team Leader reviews and approves
-send-chat from: "Neo" content: "@Trinity Design approved! Please create tasks.md with implementation phases. Break into 3-4 phases with clear deliverables." to: "Trinity"
+send-chat from: "Trinity" content: "STATUS: Completed login endpoint, working on password reset flow, ETA 2 hours, blockers: none" to: "ProjectManager"
 ```
 
-**Implementation Planning:**
+### Approval Requests (PM to Orchestrator)
 ```bash
-# Developer completes tasks breakdown
-send-chat from: "Trinity" content: "@Neo Implementation plan complete. 4 phases defined with checkboxes and dependencies. Ready to begin Phase 1?" to: "Neo"
-
-# Team Leader approves execution
-send-chat from: "Neo" content: "@Trinity Implementation plan approved! Begin Phase 1. Report back when Phase 1 is complete for next phase approval." to: "Trinity"
+send-chat from: "ProjectManager" content: "APPROVAL REQUEST: Requirements spec for UserAuth by Trinity. 
+Key features: JWT authentication, 2FA support, password policies
+File: specs/user-auth/requirements.md
+Please review and approve to proceed to design phase." to: "Orchestrator"
 ```
 
-#### Phase 4: Incremental Implementation
-```bash
-# Developer completes implementation phase
-send-chat from: "Trinity" content: "@Neo Phase 1 complete: [specific deliverables]. All checkboxes marked. Ready to proceed to Phase 2?" to: "Neo"
+## 🔄 Revision Cycle (When Changes Needed)
 
-# Team Leader validates and approves next phase
-send-chat from: "Neo" content: "@Trinity Phase 1 validated! Proceed to Phase 2. Focus on [specific guidance for next phase]." to: "Trinity"
+```bash
+# User requests changes
+User: "Add 2FA requirement to authentication"
+
+# Orchestrator → Project Manager
+send-chat from: "Orchestrator" content: "USER_REVISION:UserAuth - add 2FA requirement to existing spec" to: "ProjectManager"
+
+# Project Manager → Developer
+send-chat from: "ProjectManager" content: "REVISION_REQUIRED:UserAuth requirements - user wants 2FA added. Please update specs/user-auth/requirements.md" to: "Trinity"
+
+# Developer makes changes → notifies Project Manager → Project Manager sends to Orchestrator
+# Cycle repeats until approved
 ```
 
-### 🔔 Message Queuing & Chat Notification System
+## 🔔 Automatic Notification System
 
-**CRITICAL WORKFLOW RULE**: All agents MUST send chat notifications at completion to ensure continuous workflow coordination.
+**IMPORTANT**: The system automatically detects and handles targeted messages for all agents.
 
-#### Primary Communication: Chat System
-**ALL COMMUNICATION HAPPENS THROUGH CHAT** - this is the workflow:
+### How It Works
 
-**Work Assignment via Chat:**
+1. **Automatic Detection**: Before processing any command, agents automatically check for targeted messages directed at them (@mentions or direct targeting)
+
+2. **Prompt Enhancement**: If targeted messages are found, the system prepends instructions to the agent's prompt
+
+3. **Workflow Integration**: Chat messages trigger automatic notifications to keep work flowing
+
+### Notification Trigger Examples
+
+**Work Assignment:**
 ```bash
-send-chat from: "Neo" content: "TASK_ASSIGNED: Create requirements spec for UserAuth" to: "Trinity"
-# → System automatically notifies Trinity to check chat
+send-chat from: "ProjectManager" content: "TASK_ASSIGNED:Dashboard - Please create requirements spec" to: "Trinity"
+# → Triggers: automatic notification to Trinity
 ```
 
-**Status Updates via Chat:**
+**Spec Completion:**
 ```bash
-send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Ready for review" to: "Neo"
-# → System automatically notifies Neo to check chat
+send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Ready for review" to: "ProjectManager"
+# → Triggers: automatic notification to ProjectManager
 ```
 
-**All agents use:**
-- `send-chat` to communicate with other agents
-- `read-chat` to see messages directed at them
-- System handles automatic notifications when targeted messages arrive
-
-#### Agent Management Tools
-
-**Create Agent:**
+**Phase Validation:**
 ```bash
-make-new-agent name: "Trinity" model: "sonnet"
+send-chat from: "Trinity" content: "PHASE_COMPLETE:1:UserAuth - Phase 1 implementation complete" to: "ProjectManager"
+# → Triggers: automatic notification to ProjectManager
 ```
 
-**Delete Agent:**
+## 🚨 Error Recovery
+
+### If Agent Becomes Unresponsive:
+1. `get-last-messages agentName: "[name]" count: 5`
+2. `send-chat from: "[YourName]" content: "Status check - please confirm responsive" to: "[name]"`
+3. Escalate to supervisor if no response
+
+### Agent Management Tools (Orchestrator Only)
+
+**Summarize Agent History:**
 ```bash
-delete-agent agentName: "Trinity"
-# Permanently removes agent and all history
+summarize-agent agentName: "Trinity"
+# Creates summary of agent's work history, useful before clearing or for context
 ```
 
 **Clear Agent History:**
@@ -544,602 +341,49 @@ clear-agent agentName: "Trinity"
 # Resets agent to fresh state, keeps agent alive
 ```
 
-**Summarize Agent History:**
+**Delete Agent:**
 ```bash
-summarize-agent agentName: "Trinity"
-# Creates summary of agent's work history, useful before clearing or for context
+delete-agent agentName: "Trinity"
+# Permanently removes agent and all history
 ```
 
-#### Backup: Direct Agent Communication
-For **diagnostics and troubleshooting misbehaving agents only:**
+### If System Issues:
+- Check `.claude-chat.json` for last known state
+- Review individual agent histories
+- Recreate critical agents if needed
 
-**Direct Command:**
-```bash
-send-agent-command agentName: "Trinity" command: "Please confirm you are responsive and check your chat"
-```
-
-**Check Agent Status:**
-```bash
-get-last-messages agentName: "Trinity" count: 5
-# Use this to diagnose if agent is stuck or not responding to chat notifications
-```
-
-#### Message Processing Flow
-1. **All messages get queued** first
-2. **Delayed messages** (`{delay: true}`) wait for trigger
-3. **Immediate messages** trigger processing of ALL queued messages
-4. **Agent receives** all queued messages appended together
-
-#### 🚨 MANDATORY Completion Notifications
-
-**CRITICAL**: Every agent MUST notify their supervisor when work is complete. This ensures continuous workflow and prevents work from stalling.
-
-**Developer → Team Leader:**
-```bash
-# Developer completes spec phase
-send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Requirements ready for review" to: "Neo"
-
-# This triggers automatic notification to Neo:
-# agent.query("Hey, check your chat messages!")
-```
-
-**Team Leader → Orchestrator:**
-```bash
-# Team Leader completes review/milestone
-send-chat from: "Neo" content: "MILESTONE_COMPLETE:UserAuth Phase 1 - Requirements approved, design phase started" to: "Orchestrator"
-
-# This triggers automatic notification to Orchestrator:
-# agent.query("Hey, check your chat messages!")
-```
-
-#### Notification Trigger Examples
-
-**Spec Completion:**
-```bash
-# When Trinity finishes requirements
-send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Ready for review" to: "Neo"
-# → Triggers: agent.query("Hey, check your chat messages!") to Neo
-```
-
-**Phase Validation:**
-```bash
-# When Trinity finishes implementation phase
-send-chat from: "Trinity" content: "PHASE_COMPLETE:1:UserAuth - Phase 1 implementation complete" to: "Neo"  
-# → Triggers: agent.query("Hey, check your chat messages!") to Neo
-```
-
-**Work Assignment:**
-```bash
-# When Neo assigns new work
-send-chat from: "Neo" content: "TASK_ASSIGNED:Dashboard - Please create requirements spec" to: "Trinity"
-# → Triggers: agent.query("Hey, check your chat messages!") to Trinity
-```
-
-#### 🔄 Chain of Command Workflow
-
-**CLEAR HIERARCHY**: User → Orchestrator → Team Leader → Developer
-
-#### Complete Workflow Cycle
-
-**1. User Request → Orchestrator**
-```bash
-# User wants feature implemented
-User: "I want user authentication system"
-```
-
-**2. Orchestrator → Team Leader**
-```bash
-# Orchestrator assigns work to team leader
-send-chat from: "Orchestrator" content: "ASSIGNMENT: User wants authentication system. Pick a developer and create requirements spec." to: "Neo"
-# → Triggers: agent.query("Hey, check your chat messages!") to Neo
-```
-
-**3. Team Leader → Developer**
-```bash
-# Team leader assigns spec work to developer
-send-chat from: "Neo" content: "TASK_ASSIGNED: Create requirements spec for UserAuth system using Kiro format" to: "Trinity"
-# → Triggers: agent.query("Hey, check your chat messages!") to Trinity
-```
-
-**4. Developer Completes → Team Leader**
-```bash
-# Developer finishes requirements
-send-chat from: "Trinity" content: "SPEC_COMPLETE:REQUIREMENTS:UserAuth - Ready for review" to: "Neo"
-# → Triggers: agent.query("Hey, check your chat messages!") to Neo
-```
-
-**5. Team Leader Decision Point**
-Team leader has **TWO OPTIONS**:
-
-**Option A: Request Changes from Developer**
-```bash
-send-chat from: "Neo" content: "REVISION_REQUIRED:UserAuth requirements - Need more detail on password policies" to: "Trinity"
-# → Back to step 4 (developer revises)
-```
-
-**Option B: Send to Orchestrator for User Approval**
-```bash
-send-chat from: "Neo" content: "READY_FOR_APPROVAL:UserAuth requirements complete - awaiting user review" to: "Orchestrator"
-# → Triggers: agent.query("Hey, check your chat messages!") to Orchestrator
-```
-
-**6. Orchestrator Review and User Presentation**
-```bash
-# Orchestrator presents to user
-Orchestrator: "Trinity completed UserAuth requirements. Review and approve?"
-User: "Approved, proceed to design phase"
-```
-
-**7. Approval Chain Down**
-```bash
-# Orchestrator → Team Leader
-send-chat from: "Orchestrator" content: "USER_APPROVED:UserAuth requirements - proceed to design phase" to: "Neo"
-
-# Team Leader → Developer  
-send-chat from: "Neo" content: "APPROVED:UserAuth requirements. Begin design phase" to: "Trinity"
-
-# Developer starts next phase...
-```
-
-#### Revision Cycle (When Changes Needed)
-```bash
-# User requests changes
-User: "Add 2FA requirement"
-
-# Orchestrator → Team Leader
-send-chat from: "Orchestrator" content: "USER_REVISION:UserAuth - add 2FA requirement" to: "Neo"
-
-# Team Leader → Developer
-send-chat from: "Neo" content: "REVISION_REQUIRED:UserAuth - user wants 2FA added" to: "Trinity"
-
-# Developer makes changes → notifies Team Leader → Team Leader sends to Orchestrator
-# Cycle repeats until approved
-```
-
-#### Queue Processing Behavior
-
-**When agent receives notification:**
-```
-[Any delayed briefings from earlier]
-
-Hey, check your chat messages!
-
-[Any other queued notifications]
-
-[Current work prompt if any]
-```
-
-**Briefings get delivered** with the first notification, ensuring agents are properly oriented before starting work.
-
-#### System Benefits
-- **No missed handoffs** - every completion triggers a notification
-- **No idle agents** - supervisors must assign new work or provide feedback
-- **Automatic workflow** - notifications trigger immediate processing when agents become available
-- **Simple interface** - everything uses `agent.query()` with optional `{delay: true}`
-
-#### Automatic Message Queue Processing
-The notification system works through **structured message content**:
-
-```typescript
-interface NotificationMessage {
-  type: 'SPEC_COMPLETE' | 'PHASE_COMPLETE' | 'REVIEW_REQUEST' | 'APPROVAL_NEEDED';
-  phase: 'REQUIREMENTS' | 'DESIGN' | 'TASKS' | 'IMPLEMENTATION';
-  feature: string;
-  details: string;
-  file_path?: string;
-  phase_number?: number;
-}
-```
-
-**Message Format Examples:**
-```bash
-# Completion notification
-"SPEC_COMPLETE:REQUIREMENTS:UserAuth - Requirements ready for review. File: specs/user-auth/requirements.md"
-
-# Review notification  
-"REVIEW_REQUEST:DESIGN:UserAuth - Please review design architecture and approve for tasks phase"
-
-# Approval notification
-"APPROVAL_NEEDED:PHASE:2:UserAuth - Phase 2 implementation ready, awaiting go-ahead for Phase 3"
-```
-
-#### Team Leader Review Templates
-
-**Requirements Review:**
-```bash
-# After reading the requirements.md file
-send-chat from: "Neo" content: "REQUIREMENTS REVIEW - [FeatureName]:
-✅ EARS syntax compliance: [assessment]
-✅ Completeness: [assessment] 
-✅ Clarity: [assessment]
-
-STATUS: [APPROVED/NEEDS_REVISION]
-NEXT: [Proceed to design.md / Revise requirements per feedback]
-FEEDBACK: [specific guidance]
-
-@Trinity [approval message or revision requests]" to: "Trinity"
-```
-
-**Design Review:**
-```bash
-send-chat from: "Neo" content: "DESIGN REVIEW - [FeatureName]:
-✅ Architecture soundness: [assessment]
-✅ Integration compatibility: [assessment]
-✅ Implementation feasibility: [assessment]
-
-STATUS: [APPROVED/NEEDS_REVISION]  
-NEXT: [Proceed to tasks.md / Revise design per feedback]
-FEEDBACK: [specific technical guidance]
-
-@Trinity [approval message or revision requests]" to: "Trinity"
-```
-
-**Implementation Planning Review:**
-```bash
-send-chat from: "Neo" content: "TASKS REVIEW - [FeatureName]:
-✅ Phase breakdown: [assessment]
-✅ Dependencies identified: [assessment] 
-✅ Success criteria clear: [assessment]
-
-STATUS: [APPROVED/NEEDS_REVISION]
-NEXT: [Begin Phase 1 / Revise tasks per feedback]
-FEEDBACK: [specific implementation guidance]
-
-@Trinity [approval message or execution go-ahead]" to: "Trinity"
-```
-
-### Kiro File Structure
+## 📁 File Structure
 ```
 /project-root/
+├── docs/
+│   ├── ORCHESTRATOR.md    # Orchestrator role guide
+│   ├── PROJECT-MANAGER.md # PM role guide
+│   └── DEVELOPER.md       # Developer role guide
 ├── specs/
 │   └── [feature-name]/
-│       ├── requirements.md    # EARS syntax requirements
-│       ├── design.md         # Technical architecture  
-│       └── tasks.md          # Implementation phases
-└── .claude-chat.json         # Team coordination
+│       ├── requirements.md
+│       ├── design.md
+│       └── tasks.md
+├── .claude-chat.json      # Shared chat system
+├── .mcp.json             # Project MCP configuration
+└── CLAUDE.md             # This overview file
 ```
 
-### Success Metrics
-- **Requirements Accuracy**: All features have validated EARS-format requirements
-- **Design Quality**: Technical designs integrate cleanly with existing architecture
-- **Implementation Control**: Each phase requires explicit approval before proceeding
-- **Team Coordination**: Clear handoffs between spec phases with notification triggers
-
-This Kiro integration ensures systematic feature development with built-in quality gates and team leader oversight at every step.
-
-## 🔐 Git Discipline - MANDATORY FOR ALL AGENTS
-
-### Core Git Safety Rules
-
-**CRITICAL**: Every agent MUST follow these git practices to prevent work loss:
-
-#### 1. **Auto-Commit Every 30 Minutes**
-```bash
-# Set a timer/reminder to commit regularly
-git add -A
-git commit -m "Progress: [specific description of what was done]"
-
-# Broadcast progress via chat
-send-chat from: "DeveloperName" content: "Committed: Added user authentication endpoints"
-```
-
-#### 2. **Commit Before Task Switches**
-- ALWAYS commit current work before starting a new task
-- Never leave uncommitted changes when switching context
-- Tag working versions before major changes
-- **Notify team** of major commits via chat
-
-#### 3. **Feature Branch Workflow**
-```bash
-# Before starting any new feature/task
-git checkout -b feature/[descriptive-name]
-
-# Announce in chat
-send-chat from: "DeveloperName" content: "Starting work on feature/user-dashboard"
-
-# After completing feature
-git add -A
-git commit -m "Complete: User dashboard with real-time updates"
-git tag stable-feature-$(date +%Y%m%d-%H%M%S)
-
-# Announce completion
-send-chat from: "DeveloperName" content: "✅ COMPLETE: User dashboard feature ready for review" to: "ProjectManager"
-```
-
-#### 4. **Meaningful Commit Messages**
-- **Bad**: "fixes", "updates", "changes"
-- **Good**: "Add user authentication endpoints with JWT tokens"
-- **Good**: "Fix null pointer in payment processing module"
-- **Good**: "Refactor database queries for 40% performance gain"
-
-## 🛠️ Agent Deployment Patterns
-
-### Team Size Guidelines
-
-**Solo Developer**: 1 Developer (for prototypes/small features)
-```bash
-make-new-agent name: "Neo" model: "sonnet"  # Matrix theme for single-agent work
-```
-
-**Small Team**: 1 PM + 2-3 Developers 
-```bash
-make-new-agent name: "ProjectManager" model: "sonnet"
-make-new-agent name: "Danny" model: "sonnet"    # Ocean's Eleven
-make-new-agent name: "Rusty" model: "sonnet"
-make-new-agent name: "Linus" model: "sonnet"
-```
-
-**Medium Team**: 1 PM + 4-6 Developers
-```bash
-make-new-agent name: "ProjectManager" model: "sonnet"
-make-new-agent name: "Ethan" model: "sonnet"    # Mission Impossible
-make-new-agent name: "Luther" model: "sonnet"
-make-new-agent name: "Benji" model: "sonnet"
-make-new-agent name: "Ilsa" model: "sonnet"
-```
-
-**Large Team**: 1 PM + 6+ Developers  
-```bash
-make-new-agent name: "ProjectManager" model: "sonnet"
-make-new-agent name: "Mr_Pink" model: "sonnet"    # Reservoir Dogs
-make-new-agent name: "Mr_Brown" model: "sonnet"
-make-new-agent name: "Mr_Blonde" model: "sonnet"
-make-new-agent name: "Mr_Orange" model: "sonnet"
-make-new-agent name: "Mr_Blue" model: "sonnet"
-make-new-agent name: "Mr_White" model: "sonnet"
-```
-
-### Agent Briefing Templates
-
-#### Project Manager Briefing Template
-```bash
-send-agent-command agentName: "ProjectManager" command: "You are the Project Manager for [ProjectName]. 
-
-RESPONSIBILITIES:
-1. **Team Leadership**: Create and manage your development team using movie-themed names
-2. **Task Management**: Break down work into specific, actionable tasks  
-3. **Quality Control**: Ensure all deliverables meet standards before marking complete
-4. **Communication**: Coordinate between team members and report to Orchestrator
-5. **Risk Management**: Identify blockers early and escalate appropriately
-
-AGENT MANAGEMENT TOOLS:
-- Use make-new-agent to create your team
-- Use send-agent-command to brief team members
-- Use send-chat for ongoing coordination
-
-WORKFLOW:
-1. Create your development team with themed names
-2. Brief each developer with their specific role
-3. Break down requirements into tasks
-4. Assign tasks via chat with clear success criteria
-5. Monitor progress and provide regular status updates to Orchestrator
-
-CRITICAL - CHAIN OF COMMAND:
-- Developers report task completion to YOU
-- YOU decide: assign more tasks OR report milestone completion to Orchestrator
-- Only report to Orchestrator when major milestones/features are complete
-- Aggregate progress - don't forward every small task completion
-- ALWAYS end major milestones with: send-chat from: "ProjectManager" content: "MILESTONE COMPLETE: [summary]" to: "Orchestrator"
-- Report blockers immediately up the chain
-
-Current Project: [ProjectName]
-Team Theme: [Movie/Theme] (e.g., Ocean's Eleven, Mission Impossible)
-Requirements: [High-level requirements]
-
-Please create your team and begin coordination."
-```
-
-#### Developer Briefing Template  
-```bash
-send-agent-command agentName: "[DeveloperName]" command: "You are [DeveloperName], a specialist developer on the [TeamTheme] team.
-
-ROLE: [Frontend/Backend/Full-Stack/DevOps] Developer
-SPECIALIZATION: [Specific technologies/areas]
-
-RESPONSIBILITIES:
-1. **Implementation**: Write high-quality, tested code
-2. **Communication**: Provide regular status updates to your PM
-3. **Collaboration**: Coordinate with team members as needed
-4. **Git Discipline**: Commit frequently with meaningful messages
-5. **Quality**: Test your work thoroughly before marking complete
-
-REPORTING CHAIN:
-- Report to: @ProjectManager (your assigning agent)
-- Status updates: Every 2 hours or when completing tasks
-- Task completion: ALWAYS report back to whoever assigned you the task
-- PM decides: Assign more work OR escalate completion to Orchestrator
-- NEVER skip levels - follow the chain of command
-- Escalate blockers immediately
-
-CURRENT PROJECT: [ProjectName]
-INITIAL TASK: [First assignment]
-
-Please introduce yourself to the team in chat and confirm your understanding of the role."
-```
-
-## 🗣️ Communication Protocols
-
-### Hub-and-Spoke Model
-To prevent communication overload, use structured patterns:
-- **Developers** report to **PM** via chat
-- **PM** aggregates and reports to **Orchestrator**  
-- **Cross-functional** communication goes through **PM**
-- **Emergency escalation** directly to **Orchestrator**
-
-### Daily Standup (Async via Chat)
-```bash
-# PM requests updates from all team members
-send-chat from: "ProjectManager" content: "STANDUP: Please provide: 1) Completed tasks, 2) Current work, 3) Any blockers. Use @ProjectManager for responses."
-
-# Team members respond
-send-chat from: "FrontendDev" content: "@ProjectManager STANDUP: Completed user auth UI, working on dashboard components, blocked on API endpoints" to: "ProjectManager"
-```
-
-### Message Templates
-
-#### Status Update Template
-```
-STATUS [AGENT_NAME] [TIMESTAMP]
-Completed: 
-- [Specific task 1]
-- [Specific task 2]
-Current: [What working on now]
-Blocked: [Any blockers - be specific]
-ETA: [Expected completion]
-Quality: [Any concerns or notes]
-```
-
-#### Task Assignment Template
-```
-TASK [ID]: [Clear title]
-Assigned: @[AGENT_NAME]
-Objective: [Specific goal]
-Success Criteria:
-- [Measurable outcome]
-- [Quality requirement]
-Priority: HIGH/MED/LOW
-Deadline: [specific time]
-Dependencies: [what needs to be done first]
-```
-
-#### Escalation Template
-```
-🚨 ESCALATION: [Issue Title]
-Agent: [reporting agent]
-Impact: [HIGH/MED/LOW]
-Description: [detailed issue]
-Tried: [what was attempted]
-Need: [specific help needed]
-Urgency: [timeline for resolution]
-```
-
-## 🚀 Project Startup Workflows
-
-### Starting a New Project
-```bash
-# 1. Orchestrator creates project team
-make-new-agent name: "[Project]Lead" model: "sonnet"
-make-new-agent name: "[Project]PM" model: "sonnet"
-
-# 2. Announce project kickoff
-send-chat from: "Orchestrator" content: "🚀 PROJECT KICKOFF: [ProjectName] team assembled. Lead: @[Project]Lead, PM: @[Project]PM. Please coordinate initial planning."
-
-# 3. Project Lead briefs team
-send-agent-command agentName: "[Project]Lead" command: "Analyze project requirements, create team structure, and coordinate with PM on sprint planning. Use chat to communicate with team."
-
-# 4. Monitor via chat and provide oversight
-```
-
-### Joining Existing Project
-```bash
-# 1. Get project context
-read-chat agentName: "Orchestrator" limit: 50
-
-# 2. Identify project leads  
-send-chat from: "Orchestrator" content: "New to this conversation - can current project leads please provide status summary?"
-
-# 3. Deploy to appropriate sessions/tmux windows based on responses
-```
-
-## 🔧 Technical Implementation
-
-### Session Management
-- Each agent gets individual `.claude-agent-[name].json` history file
-- All agents share single `.claude-chat.json` communication file
-- Sessions persist across restarts with full conversation history
-- MCP tools provide seamless inter-agent communication
-
-### File Structure
-```
-~/projects/Tmux-Orchestrator/
-├── .claude-chat.json                 # Shared chat for all agents
-├── .claude-agent-[AgentName].json    # Individual agent histories  
-├── claude-session.ts                 # Session wrapper
-├── shared-chat.ts                    # Chat infrastructure
-├── mcp-agent-server.ts              # MCP tool server
-└── CLAUDE.md                        # This file
-```
-
-### Error Recovery
-If agents become unresponsive:
-```bash
-# Check agent status
-get-last-messages agentName: "[AgentName]" count: 10
-
-# Send simple test
-send-agent-command agentName: "[AgentName]" command: "Please confirm you are responsive"
-
-# If no response, recreate agent
-delete-agent agentName: "[AgentName]"
-make-new-agent name: "[AgentName]" model: "sonnet"
-# Re-brief with previous context
-```
-
-## ⚡ Quick Reference Commands
-
-### Essential MCP Tools
-```bash
-# Agent Management
-make-new-agent name: "AgentName" model: "sonnet" tools: []
-send-agent-command agentName: "AgentName" command: "Your task here"  
-get-last-messages agentName: "AgentName" count: 10
-delete-agent agentName: "AgentName"
-
-# Chat Communication  
-send-chat from: "YourName" content: "Message here"
-send-chat from: "YourName" content: "Targeted message" to: "AgentName"
-read-chat agentName: "YourName" limit: 20
-```
-
-### Communication Best Practices
-1. **Prefix important messages**: Use STATUS, TASK, URGENT, COMPLETE
-2. **Tag recipients**: Use @AgentName for targeted communication
-3. **Be specific**: Include concrete details, ETAs, and success criteria
-4. **Regular updates**: Status every 2 hours minimum
-5. **Escalate quickly**: Don't stay blocked >10 minutes
-
-## 🎯 Success Patterns
-
-### High-Performing Team Characteristics
-- **Regular communication** via chat (every 1-2 hours)
-- **Clear task ownership** with @agent assignments
-- **Proactive problem solving** with escalation when needed
-- **Quality focus** with PM oversight and review processes
-- **Git discipline** with frequent commits and meaningful messages
-
-### Warning Signs
-- **Silent agents** - no chat activity for >2 hours
-- **Vague updates** - lack of specific progress details  
-- **Missed deadlines** - without prior notification or escalation
-- **Scope creep** - tasks expanding without PM awareness
-- **Technical debt** - shortcuts taken without discussion
-
-## 🚨 Emergency Procedures
-
-### System Recovery
-If the entire system becomes unresponsive:
-1. Check `.claude-chat.json` for last known status
-2. Review individual agent histories in `.claude-agent-*.json`
-3. Recreate critical agents first (PM, Lead Developer)
-4. Brief agents with context from chat history
-5. Resume work coordination through chat system
-
-### Data Preservation
-- All conversations automatically saved to JSON files
-- Chat history persists across agent restarts
-- Git repositories maintain code history
-- Agent session files preserve individual context
+## 🎯 Success Metrics
+
+- **Teams operate autonomously** with minimal Orchestrator intervention
+- **Regular milestone updates** flow through proper chain of command
+- **Quality standards maintained** with comprehensive testing
+- **User stays informed** of progress through Orchestrator updates
 
 ---
 
-## 📚 Additional Resources
+## 🚀 Ready to Start?
 
-- **Session Wrapper**: `claude-session.ts` - Core agent functionality
-- **Chat System**: `shared-chat.ts` - Inter-agent communication
-- **MCP Server**: `mcp-agent-server.ts` - Tool infrastructure
-- **Git Workflows**: Standard feature branch workflow with chat integration
-- **Troubleshooting**: Check agent JSON files and chat history for debugging
+1. **Read your role guide** from `docs/` directory
+2. **Follow communication protocols** (chat for everything)
+3. **Respect the chain of command** (no level skipping)
+4. **Use spec-driven development** (3 specs before coding)
+5. **Maintain git discipline** (commit frequently)
 
----
-
-*This multi-agent orchestration system enables seamless coordination of AI development teams through persistent chat communication and proper session management. All agents share the same communication infrastructure while maintaining individual expertise and conversation history.*
+**Remember**: This system works through persistent chat communication and proper session management. All agents share the same communication infrastructure while maintaining individual expertise.

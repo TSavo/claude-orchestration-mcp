@@ -24,9 +24,29 @@ cd claude-orchestration-mcp
 npm install
 ```
 
-### 2. Configure Claude Desktop
+### 2. Configure MCP Server
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+#### Option A: Project-Level Configuration (Recommended)
+The project includes a `.mcp.json` file that Claude Code will automatically detect:
+
+```json
+{
+  "mcpServers": {
+    "agent-orchestrator": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "./mcp-agent-server.ts"]
+    }
+  }
+}
+```
+
+This configuration is already included in the project and will work automatically when you open the project in Claude Code.
+
+#### Option B: Global Claude Desktop Configuration
+For Claude Desktop, add to your configuration file:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
