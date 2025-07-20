@@ -119,11 +119,450 @@ Your Project Manager will assign you work in the specs/ structure:
 - **API Refactor**: `specs/existing-features/api-refactor/`
 - **Authentication Fix**: `specs/existing-features/user-auth/`
 
+### 📋 DETAILED SPEC WRITING GUIDE
+
+**CRITICAL**: Every specification document must be comprehensive, professional-grade, and actionable. These specs serve as contracts between team members and the foundation for all development work.
+
 ### 1. Requirements Specification (requirements.md)
-Create a comprehensive requirements document using EARS (Easy Approach to Requirements Syntax):
+**PURPOSE**: Define EXACTLY what needs to be built, why it's needed, and how success is measured.
+
+**MANDATORY SECTIONS** for every requirements.md:
+
+#### A. Feature/Project Purpose
+```markdown
+## Purpose
+### Problem Statement
+- What specific problem does this solve?
+- Who is affected by this problem?
+- What happens if we don't solve it?
+
+### Target Users
+- Primary users: [detailed user personas]
+- Secondary users: [other stakeholders]
+- User goals and motivations
+- Current user pain points
+
+### Success Metrics
+- Quantifiable success criteria
+- Key Performance Indicators (KPIs)
+- User acceptance criteria
+- Business impact measurements
+```
+
+#### B. Functional Requirements (EARS Syntax)
+**EARS Format**: WHEN [condition] THEN [system response] IF [constraint]
 
 ```markdown
-# User Authentication System - Requirements
+## Functional Requirements
+
+### Core User Workflows
+WHEN a new user visits the registration page
+THEN the system displays email, password, and confirm password fields
+IF the user has not exceeded the daily registration limit
+
+WHEN a user submits valid registration data
+THEN the system creates a new account and sends a verification email
+IF the email address is not already registered
+
+WHEN a user enters an invalid email format
+THEN the system displays "Please enter a valid email address" error message
+IF the email field loses focus or form is submitted
+
+### Authentication Workflows  
+WHEN a registered user enters correct credentials
+THEN the system grants access and redirects to the dashboard
+IF the account is verified and not suspended
+
+WHEN a user enters incorrect credentials 3 times
+THEN the system temporarily locks the account for 15 minutes
+IF the lockout hasn't been manually overridden by an admin
+
+### Admin Workflows
+WHEN an admin views the user management page
+THEN the system displays all users with status, registration date, and last login
+IF the admin has user management permissions
+```
+
+#### C. Non-Functional Requirements
+```markdown
+## Performance Requirements
+- Page load time: < 2 seconds for 95% of requests
+- User registration: < 500ms response time
+- Support: 10,000 concurrent users
+- Database queries: < 100ms average response time
+
+## Security Requirements
+- Password encryption: bcrypt with salt rounds ≥ 12
+- Session management: JWT tokens with 24-hour expiration
+- Rate limiting: 5 login attempts per minute per IP
+- Data protection: All PII encrypted at rest
+
+## Usability Requirements
+- Mobile responsive: Works on screens ≥ 320px width
+- Accessibility: WCAG 2.1 AA compliance
+- Browser support: Chrome, Firefox, Safari, Edge (latest 2 versions)
+- Error messages: Clear, actionable, user-friendly language
+```
+
+#### D. Business Logic & Validation Rules
+```markdown
+## Business Rules
+
+### User Registration Rules
+- Email: Must be valid format, unique, maximum 254 characters
+- Password: 8-128 characters, must contain uppercase, lowercase, number, special character
+- Account verification: Required within 24 hours or account is deactivated
+- Duplicate prevention: Block registration with same email across all user types
+
+### Authentication Rules
+- Session timeout: 24 hours of inactivity
+- Password reset: Token valid for 1 hour, single use only
+- Account lockout: 3 failed attempts = 15-minute lockout
+- Admin override: Can unlock accounts and reset passwords
+
+### Data Retention Rules
+- User data: Retained until account deletion requested
+- Audit logs: Login attempts stored for 90 days
+- Session data: Cleared on logout or expiration
+- Password history: Last 5 passwords stored to prevent reuse
+```
+
+#### E. Integration & Dependency Requirements
+```markdown
+## External Dependencies
+- Email service: SendGrid API for verification and password reset emails
+- Database: PostgreSQL 14+ for user data storage
+- Authentication: JWT token validation library
+- Password hashing: bcrypt library for secure password storage
+
+## API Integration Points
+- User creation: POST /api/users with validation
+- Authentication: POST /api/auth/login with rate limiting
+- Email verification: GET /api/auth/verify/{token}
+- Password reset: POST /api/auth/reset-password
+
+## Data Storage Requirements
+- User table: id, email, password_hash, verified, created_at, updated_at
+- Session table: user_id, token, expires_at, created_at
+- Audit table: user_id, action, ip_address, timestamp, success
+```
+
+### 2. Design Specification (design.md)
+**PURPOSE**: Define HOW the requirements will be implemented technically.
+
+**MANDATORY SECTIONS** for every design.md:
+
+#### A. Technical Architecture
+```markdown
+## System Architecture
+### Component Overview
+- Frontend: React components for registration/login forms
+- Backend: Express.js API with authentication middleware
+- Database: PostgreSQL with user and session tables
+- External: SendGrid for email delivery
+
+### Data Flow Diagram
+1. User submits registration form
+2. Frontend validates input and sends POST to /api/users
+3. Backend validates data and checks for duplicates
+4. If valid, create user record and send verification email
+5. Return success response with next steps
+
+### Security Architecture
+- Input validation: Frontend + backend validation for all user inputs
+- Password security: bcrypt hashing with salt rounds = 12
+- Session management: JWT tokens with secure httpOnly cookies
+- Rate limiting: Express-rate-limit middleware on auth endpoints
+```
+
+#### B. Database Design
+```markdown
+## Database Schema
+
+### Users Table
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(254) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    verified BOOLEAN DEFAULT FALSE,
+    verification_token VARCHAR(255),
+    verification_expires TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Sessions Table
+```sql
+CREATE TABLE user_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Indexes
+- users.email (unique index for fast lookup)
+- user_sessions.token_hash (for session validation)
+- user_sessions.expires_at (for cleanup queries)
+```
+
+#### C. API Design
+```markdown
+## API Endpoints
+
+### POST /api/users (User Registration)
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "confirmPassword": "SecurePass123!"
+}
+```
+
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "message": "Registration successful. Please check your email for verification.",
+  "userId": 123
+}
+```
+
+**Response (Error - 400):**
+```json
+{
+  "success": false,
+  "errors": [
+    {
+      "field": "email",
+      "message": "Email address is already registered"
+    }
+  ]
+}
+```
+
+### POST /api/auth/login
+**Request:**
+```json
+{
+  "email": "user@example.com", 
+  "password": "SecurePass123!"
+}
+```
+
+**Response (Success - 200):**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 123,
+    "email": "user@example.com",
+    "verified": true
+  }
+}
+```
+```
+
+#### D. Frontend Implementation
+```markdown
+## React Components
+
+### RegistrationForm Component
+- Input validation with real-time feedback
+- Password strength indicator
+- Form submission with loading states
+- Error display and handling
+
+### LoginForm Component  
+- Email and password inputs
+- Remember me checkbox
+- Forgot password link
+- Social login integration (future)
+
+### Validation Rules
+- Email: Real-time format validation using regex
+- Password: Strength meter with requirements checklist
+- Confirm Password: Match validation on blur
+- Form: Prevent submission until all fields valid
+```
+
+### 3. Tasks Specification (tasks.md)
+**PURPOSE**: Break down implementation into manageable, ordered development tasks.
+
+**MANDATORY SECTIONS** for every tasks.md:
+
+#### A. Implementation Phases
+```markdown
+## Development Phases
+
+### Phase 1: Foundation (Week 1)
+**Goal**: Core authentication infrastructure
+**Deliverables**:
+- Database schema and migrations
+- Basic API endpoints (register, login, logout)
+- Password hashing and JWT token generation
+- Basic input validation
+
+**Success Criteria**:
+- API endpoints return proper responses
+- Passwords are securely hashed
+- JWT tokens are generated and validated
+- Database operations complete successfully
+
+### Phase 2: Frontend Integration (Week 2)
+**Goal**: User-facing registration and login
+**Deliverables**:
+- React registration and login forms
+- Frontend validation and error handling
+- API integration with proper error states
+- Responsive design implementation
+
+**Success Criteria**:
+- Users can register and login successfully
+- Form validation provides clear feedback
+- Error handling is user-friendly
+- Works on mobile and desktop devices
+
+### Phase 3: Email Verification (Week 3)
+**Goal**: Email verification workflow
+**Deliverables**:
+- Email verification token generation
+- SendGrid integration for email delivery
+- Email verification endpoint and UI
+- Account activation workflow
+
+**Success Criteria**:
+- Verification emails are sent successfully
+- Users can verify accounts via email links
+- Unverified accounts have limited access
+- Email templates are professional
+```
+
+#### B. Detailed Development Tasks
+```markdown
+## Backend Development Tasks
+
+### Database Setup
+- [ ] Create user table migration with proper constraints
+- [ ] Create sessions table migration
+- [ ] Add database indexes for performance
+- [ ] Create seed data for testing
+- [ ] Set up database connection pooling
+**Estimated Time**: 1 day
+
+### Authentication API
+- [ ] Implement POST /api/users endpoint with validation
+- [ ] Implement POST /api/auth/login with rate limiting
+- [ ] Implement POST /api/auth/logout 
+- [ ] Add JWT middleware for protected routes
+- [ ] Implement password reset functionality
+**Estimated Time**: 3 days
+
+### Email Integration
+- [ ] Set up SendGrid account and API keys
+- [ ] Create email templates for verification and reset
+- [ ] Implement email sending service
+- [ ] Add email verification endpoint
+- [ ] Test email delivery in different environments
+**Estimated Time**: 2 days
+
+## Frontend Development Tasks
+
+### Authentication Forms
+- [ ] Create registration form component with validation
+- [ ] Create login form component with error handling
+- [ ] Implement password strength indicator
+- [ ] Add loading states and user feedback
+- [ ] Make forms responsive for mobile
+**Estimated Time**: 2 days
+
+### User Experience
+- [ ] Create email verification success/error pages
+- [ ] Implement password reset flow
+- [ ] Add "forgot password" functionality
+- [ ] Create user dashboard/profile page
+- [ ] Add logout functionality
+**Estimated Time**: 2 days
+```
+
+#### C. Testing & Quality Assurance
+```markdown
+## Testing Strategy
+
+### Unit Tests
+- [ ] API endpoint tests (registration, login, logout)
+- [ ] Password hashing and validation tests
+- [ ] JWT token generation and validation tests
+- [ ] Email service integration tests
+- [ ] Database operation tests
+**Target Coverage**: 90%+
+
+### Integration Tests
+- [ ] End-to-end registration workflow
+- [ ] End-to-end login workflow
+- [ ] Email verification workflow
+- [ ] Password reset workflow
+- [ ] Error handling scenarios
+**Target Coverage**: Key user workflows
+
+### Manual Testing Checklist
+- [ ] Registration with valid data
+- [ ] Registration with invalid data (various scenarios)
+- [ ] Login with correct credentials
+- [ ] Login with incorrect credentials
+- [ ] Email verification flow
+- [ ] Password reset flow
+- [ ] Mobile responsiveness
+- [ ] Cross-browser compatibility
+```
+
+#### D. Documentation & Deployment
+```markdown
+## Documentation Tasks
+- [ ] Update API documentation with new endpoints
+- [ ] Create user guides for registration/login
+- [ ] Document deployment procedures
+- [ ] Update README with setup instructions
+- [ ] Create troubleshooting guide
+
+## Deployment Tasks
+- [ ] Set up environment variables for all environments
+- [ ] Configure database migrations for production
+- [ ] Set up monitoring for authentication endpoints
+- [ ] Configure email service in production
+- [ ] Set up logging for security events
+- [ ] Plan rollout strategy (feature flags, gradual rollout)
+```
+
+### ⚠️ CRITICAL SPEC WRITING RULES
+
+1. **Be Specific**: Never use vague terms like "user-friendly" without defining what that means
+2. **Include Examples**: Every requirement should have concrete examples  
+3. **Define Success**: Every feature must have measurable success criteria
+4. **Consider Edge Cases**: Document error scenarios, boundary conditions, failure modes
+5. **Reference Dependencies**: Clearly state what this depends on and what depends on it
+6. **Estimate Time**: Provide realistic time estimates for all tasks
+7. **Plan Testing**: Every requirement needs corresponding test criteria
+8. **Document Assumptions**: State any assumptions about user behavior, system capabilities, etc.
+
+### 🔍 SPEC REVIEW CHECKLIST
+
+Before submitting any spec for approval, verify:
+- [ ] All mandatory sections are complete and detailed
+- [ ] EARS syntax is used correctly for functional requirements  
+- [ ] Success criteria are specific and measurable
+- [ ] All dependencies and integration points are documented
+- [ ] Time estimates are realistic and justified
+- [ ] Testing approach is comprehensive
+- [ ] Edge cases and error scenarios are covered
+- [ ] Technical approach is feasible with current stack
+- [ ] Security and performance considerations are addressed
 
 ## Overview
 Implement a secure user authentication system with JWT tokens, password hashing, and optional 2FA support for web application users.
