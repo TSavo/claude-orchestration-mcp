@@ -94,7 +94,7 @@ export class MCPAgentServer {
         },
         {
           name: "send-chat",
-          description: "Send a message to the shared agent chat system. PRIMARY COMMUNICATION TOOL. Use for all agent-to-agent communication, status updates, task assignments, and session endings. MANDATORY: Every session must end with send-chat to your supervisor. Use 'to:' parameter for direct agent communication. Supports @mentions for additional notifications.",
+          description: "Send a message to the shared agent chat system. PRIMARY COMMUNICATION TOOL. CRITICAL SESSION ENDING FORMATS (MANDATORY): Orchestrator asks user 'What would you like me to do next?', ProjectManager sends 'SESSION END: [summary]. NEXT: [plans]. Any new instructions?' to Orchestrator, Developer sends 'SESSION END: [work]. NEXT: [plans]. Any new assignments?' to ProjectManager. TASK ASSIGNMENTS must include 'REPLY TO:' and 'DO NOT FINISH' instructions. NEVER end a session without following required format for your role.",
           inputSchema: {
             type: "object",
             properties: {
@@ -107,11 +107,11 @@ export class MCPAgentServer {
         },
         {
           name: "read-chat",
-          description: "Read messages from the shared agent chat system. Use this regularly to check for targeted messages, @mentions, and team communications. BEHAVIOR: Always check for messages directed at you when starting work or when notified. Read recent team conversations to understand current project status and respond to relevant discussions.",
+          description: "Read messages from the shared agent chat system and get critical session ending reminders. ESSENTIAL BEHAVIOR: Use this tool when starting work, when notified, and regularly to check for targeted messages. CRITICAL: This tool provides mandatory session ending instructions at the end of every response - YOU MUST follow these before ending your session to prevent system breakdown. Use to understand current project status, respond to @mentions, and get explicit guidance on how to properly end your session.",
           inputSchema: {
             type: "object",
             properties: {
-              agentName: { type: "string", description: "Your agent name - used to filter relevant messages and show targeted communications" },
+              agentName: { type: "string", description: "Your agent name - used to filter relevant messages and show session ending requirements for your role" },
               limit: { type: "number", description: "Number of recent messages to retrieve - use 10-20 for recent context, 50+ for project review", default: 20 }
             },
             required: ["agentName"]
@@ -407,10 +407,38 @@ export class MCPAgentServer {
       const messages = await sharedChat.getChatMessages(limit, agentName);
       
       if (messages.length === 0) {
+        // Determine supervisor based on agent role for session ending reminder
+        const isOrchestrator = agentName && agentName.toLowerCase().includes('orchestrator');
+        const isProjectManager = agentName && (agentName.toLowerCase().includes('manager') || agentName.toLowerCase().includes('pm'));
+        
+        let sessionEndingReminder = '';
+        
+        if (isOrchestrator) {
+          sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST ask the user: "What would you like me to do next?"
+NEVER end a session without this question - it breaks the entire workflow and strands all agents.`;
+        } else if (isProjectManager) {
+          sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST send a status update:
+send-chat from: "${agentName}" content: "SESSION END: [summary]. NEXT: [plans]. Any new instructions?" to: "Orchestrator"
+NEVER end without this chat - it breaks the multi-agent system.`;
+        } else {
+          sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST send a status update:
+send-chat from: "${agentName}" content: "SESSION END: [summary]. NEXT: [plans]. Any new assignments?" to: "ProjectManager"
+NEVER end without this chat - it breaks the workflow and strands your team.`;
+        }
+        
         return {
           content: [{
             type: "text",
-            text: "No chat messages found"
+            text: "No chat messages found" + sessionEndingReminder
           }]
         };
       }
@@ -420,11 +448,39 @@ export class MCPAgentServer {
         const toText = msg.to ? ` @${msg.to}` : '';
         return `[${timestamp}] ${msg.from}${toText}: ${msg.content}`;
       }).join('\n');
+
+      // Determine supervisor based on agent role
+      const isOrchestrator = agentName && agentName.toLowerCase().includes('orchestrator');
+      const isProjectManager = agentName && (agentName.toLowerCase().includes('manager') || agentName.toLowerCase().includes('pm'));
+      
+      let sessionEndingReminder = '';
+      
+      if (isOrchestrator) {
+        sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST ask the user: "What would you like me to do next?"
+NEVER end a session without this question - it breaks the entire workflow and strands all agents.`;
+      } else if (isProjectManager) {
+        sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST send a status update:
+send-chat from: "${agentName}" content: "SESSION END: [summary]. NEXT: [plans]. Any new instructions?" to: "Orchestrator"
+NEVER end without this chat - it breaks the multi-agent system.`;
+      } else {
+        sessionEndingReminder = `
+
+🚨 CRITICAL SESSION ENDING REMINDER:
+Before ending this session, you MUST send a status update:
+send-chat from: "${agentName}" content: "SESSION END: [summary]. NEXT: [plans]. Any new assignments?" to: "ProjectManager"
+NEVER end without this chat - it breaks the workflow and strands your team.`;
+      }
       
       return {
         content: [{
           type: "text",
-          text: formattedMessages
+          text: formattedMessages + sessionEndingReminder
         }]
       };
     } catch (error) {

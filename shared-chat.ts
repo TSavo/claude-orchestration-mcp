@@ -104,12 +104,16 @@ class SharedChatStore {
         if (targetAgent) {
           targetAgent.query(prompt);
         } else {
-          console.error(`❌ AGENT NOTIFICATION FAILED: ${agentName}`);
-          console.error(`🔧 TROUBLESHOOTING STEPS:`);
-          console.error(`   1. Check if agent exists: get-last-messages agentName: "${agentName}" count: 5`);
-          console.error(`   2. If agent unresponsive, recreate: delete-agent agentName: "${agentName}" then make-new-agent`);
-          console.error(`   3. If systemic issues, escalate to Orchestrator via chat`);
-          console.error(`   4. Alternative: send message to supervisor or team instead`);
+          console.error(`❌ CRITICAL SYSTEM ERROR: Agent notification failed`);
+          console.error(`🎯 FAILED AGENT: ${agentName}`);
+          console.error(`📍 ERROR CONTEXT: Message from ${from} could not be delivered`);
+          console.error(`⏰ TIMESTAMP: ${new Date().toISOString()}`);
+          console.error(`🔧 IMMEDIATE RECOVERY ACTIONS REQUIRED:`);
+          console.error(`   1. VERIFY: get-last-messages agentName: "${agentName}" count: 5`);
+          console.error(`   2. RECREATE: delete-agent agentName: "${agentName}" && make-new-agent name: "${agentName}"`);
+          console.error(`   3. ESCALATE: Notify supervisor about agent failure via chat`);
+          console.error(`   4. WORKAROUND: Redirect message to available team member`);
+          console.error(`⚠️ IMPACT: Communication chain broken - immediate action required`);
         }
       }
     }
@@ -151,13 +155,17 @@ class SharedChatStore {
       
       console.log(`Notified orchestrator in ${orchestratorSession} about message from ${from}`);
     } catch (error) {
-      console.error('❌ ORCHESTRATOR NOTIFICATION FAILED:', error);
-      console.error('🔧 RECOVERY STEPS:');
-      console.error('   1. Check if orchestrator tmux session exists: tmux list-sessions | grep orchestrator');
-      console.error('   2. If session missing, start orchestrator: ./start-orchestrator.sh');
-      console.error('   3. If session exists but unresponsive, attach and check: tmux attach -t orchestrator:0');
-      console.error('   4. Verify .orchestrator-session file points to correct session');
-      console.error('   5. If all else fails, restart the orchestrator session completely');
+      console.error('❌ CRITICAL SYSTEM FAILURE: Orchestrator notification failed');
+      console.error(`📍 ERROR DETAILS: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`⏰ TIMESTAMP: ${new Date().toISOString()}`);
+      console.error(`📍 CONTEXT: Failed to notify orchestrator about message from ${from}`);
+      console.error('🚨 IMMEDIATE RECOVERY PROTOCOL:');
+      console.error('   1. VERIFY: tmux list-sessions | grep orchestrator');
+      console.error('   2. RESTART: ./start-orchestrator.sh (if session missing)');
+      console.error('   3. INSPECT: tmux attach -t orchestrator:0 (if session exists)');
+      console.error('   4. VALIDATE: Check .orchestrator-session file content');
+      console.error('   5. NUCLEAR: Kill and restart entire orchestrator session');
+      console.error('⚠️ SYSTEM IMPACT: Command chain broken - orchestrator unreachable');
     }
   }
 
@@ -242,15 +250,19 @@ class SharedChatStore {
       };
       await fs.writeFile(this.chatFilePath, JSON.stringify(chatData, null, 2));
     } catch (error) {
-      console.error('❌ CRITICAL: Chat save failed:', error);
-      console.error('🚨 IMPACT: Agent communications may be lost');
-      console.error('🔧 RECOVERY ACTIONS:');
-      console.error('   1. Check disk space: df -h');
-      console.error('   2. Check file permissions on .claude-chat.json');
-      console.error('   3. Verify working directory write access');
-      console.error('   4. If permissions issue: chmod 664 .claude-chat.json');
-      console.error('   5. If disk full, free space before continuing');
-      console.error('⚠️  SYSTEM RISK: Communication history could be corrupted');
+      console.error('❌ CATASTROPHIC FAILURE: Chat persistence system failed');
+      console.error(`📍 ERROR DETAILS: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`⏰ TIMESTAMP: ${new Date().toISOString()}`);
+      console.error(`📍 FILE PATH: ${this.chatFilePath}`);
+      console.error('🚨 CRITICAL IMPACT: All agent communications at risk of data loss');
+      console.error('🚨 IMMEDIATE ACTIONS REQUIRED:');
+      console.error('   1. SPACE: df -h (check disk space)');
+      console.error('   2. PERMISSIONS: ls -la .claude-chat.json');
+      console.error('   3. ACCESS: touch test-write && rm test-write');
+      console.error('   4. FIX PERMS: chmod 664 .claude-chat.json');
+      console.error('   5. FREE SPACE: Clean logs/temp files if disk full');
+      console.error('⚠️ SYSTEM STATUS: UNSTABLE - Communication history corruption risk');
+      console.error('🚨 NOTIFY ORCHESTRATOR IMMEDIATELY about chat system failure');
     }
   }
 
@@ -298,16 +310,27 @@ class SharedChatStore {
   private async checkForTimeoutAgents(): Promise<void> {
     const now = new Date();
     const timeoutThresholdMs = this.timeoutMinutes * 60 * 1000;
+    const escalationThresholdMs = this.timeoutMinutes * 60 * 1000 * 2; // 2x timeout for escalation
+    const criticalThresholdMs = this.timeoutMinutes * 60 * 1000 * 3; // 3x timeout for critical
 
     for (const [agentName, lastNotificationTime] of Object.entries(this.agentLastNotification)) {
       const lastNotified = new Date(lastNotificationTime);
       const timeSinceLastNotification = now.getTime() - lastNotified.getTime();
+      const minutesSilent = Math.floor(timeSinceLastNotification / 1000 / 60);
 
-      if (timeSinceLastNotification > timeoutThresholdMs) {
-        console.log(`Agent ${agentName} has been silent for ${Math.floor(timeSinceLastNotification / 1000 / 60)} minutes, sending timeout prompt`);
+      if (timeSinceLastNotification > criticalThresholdMs) {
+        console.error(`🚨 CRITICAL: Agent ${agentName} silent for ${minutesSilent} minutes - SYSTEM FAILURE RISK`);
+        await this.sendCriticalTimeoutAlert(agentName, minutesSilent);
+      } else if (timeSinceLastNotification > escalationThresholdMs) {
+        console.warn(`⚠️ ESCALATION: Agent ${agentName} silent for ${minutesSilent} minutes - escalating to supervisor`);
+        await this.sendEscalationTimeout(agentName, minutesSilent);
+      } else if (timeSinceLastNotification > timeoutThresholdMs) {
+        console.log(`🔔 TIMEOUT: Agent ${agentName} silent for ${minutesSilent} minutes - sending reminder`);
         await this.sendTimeoutPrompt(agentName);
-        
-        // Update notification time to prevent spam
+      }
+      
+      // Update notification time to prevent spam (only for basic timeout)
+      if (timeSinceLastNotification > timeoutThresholdMs && timeSinceLastNotification < escalationThresholdMs) {
         this.agentLastNotification[agentName] = now.toISOString();
         await this.saveAgentNotifications();
       }
@@ -388,15 +411,17 @@ NEVER end a session without this chat to ProjectManager - it breaks the workflow
           targetAgent.query(timeoutPrompt);
           console.log(`Sent comprehensive timeout prompt to ${agentName} (${isProjectManager ? 'PM' : 'Developer'})`);
         } else {
-          console.error(`❌ TIMEOUT PROMPT FAILED: Cannot reach ${agentName}`);
-          console.error(`🚨 CRITICAL: Agent ${agentName} is silent AND unreachable`);
-          console.error(`🔧 IMMEDIATE ACTIONS REQUIRED:`);
-          console.error(`   1. Check agent status: get-last-messages agentName: "${agentName}" count: 10`);
-          console.error(`   2. If no response, the agent may be stuck or crashed`);
-          console.error(`   3. Consider deleting and recreating: delete-agent agentName: "${agentName}"`);
-          console.error(`   4. Notify supervisor via chat about agent failure`);
-          console.error(`   5. Redistribute ${agentName}'s work to other team members if urgent`);
-          console.error(`⚠️  PROJECT IMPACT: Workflow delays expected until ${agentName} is restored`);
+          console.error(`❌ AGENT COMMUNICATION FAILURE: ${agentName} is unreachable`);
+          console.error(`🚨 STATUS: Agent silent AND unresponsive to system prompts`);
+          console.error(`⏰ DURATION: ${Math.floor((Date.now() - new Date(this.agentLastNotification[agentName] || Date.now()).getTime()) / 1000 / 60)} minutes silent`);
+          console.error(`🚨 EMERGENCY PROTOCOL ACTIVATED:`);
+          console.error(`   1. DIAGNOSE: get-last-messages agentName: "${agentName}" count: 10`);
+          console.error(`   2. ASSESS: Check if agent process is stuck or crashed`);
+          console.error(`   3. RECOVERY: delete-agent agentName: "${agentName}" && make-new-agent name: "${agentName}"`);
+          console.error(`   4. ESCALATE: Alert supervisor immediately via chat`);
+          console.error(`   5. REDISTRIBUTE: Move critical work to available agents`);
+          console.error(`⚠️ PROJECT IMPACT: Critical workflow disruption - immediate intervention required`);
+          console.error(`📍 NEXT STEP: Manual orchestrator intervention needed`);
         }
       }
     }
@@ -513,6 +538,43 @@ NEVER end a session without this chat to ProjectManager - it breaks the workflow
   registerAgentActivity(agentName: string): void {
     this.agentLastNotification[agentName] = new Date().toISOString();
     this.saveAgentNotifications();
+  }
+
+  private async sendEscalationTimeout(agentName: string, minutesSilent: number): Promise<void> {
+    const supervisor = this.getSupervisorForAgent(agentName);
+    const escalationMessage = `🚨 ESCALATION ALERT: Agent ${agentName} has been silent for ${minutesSilent} minutes and may be stuck.
+
+SUPERVISOR ACTION REQUIRED:
+1. Immediate check: get-last-messages agentName: "${agentName}" count: 10
+2. If agent unresponsive, consider recreating the agent
+3. Redistribute urgent work to available team members
+4. Report status to Orchestrator if critical to project timeline
+
+IMPACT: Team productivity affected by silent agent.`;
+
+    // Send escalation to supervisor
+    await this.sendChatMessage('SYSTEM', escalationMessage, supervisor);
+    console.warn(`Escalated ${agentName} timeout to ${supervisor}`);
+  }
+
+  private async sendCriticalTimeoutAlert(agentName: string, minutesSilent: number): Promise<void> {
+    // Send critical alert to both supervisor and orchestrator
+    const supervisor = this.getSupervisorForAgent(agentName);
+    const criticalMessage = `🚨 CRITICAL SYSTEM ALERT: Agent ${agentName} has been silent for ${minutesSilent} minutes.
+
+IMMEDIATE ACTION REQUIRED:
+1. Agent may have crashed or become unresponsive
+2. System integrity at risk from prolonged agent silence
+3. Manual intervention required immediately
+4. Consider emergency agent recreation: delete-agent && make-new-agent
+
+SYSTEM STATUS: DEGRADED - Multi-agent workflow compromised`;
+
+    await this.sendChatMessage('SYSTEM', criticalMessage, supervisor);
+    if (supervisor !== 'Orchestrator') {
+      await this.sendChatMessage('SYSTEM', criticalMessage, 'Orchestrator');
+    }
+    console.error(`🚨 CRITICAL ALERT sent for ${agentName} (${minutesSilent}min silent)`);
   }
 
   // Cleanup method

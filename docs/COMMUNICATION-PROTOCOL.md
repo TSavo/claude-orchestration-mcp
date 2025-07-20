@@ -47,9 +47,20 @@ send-chat from: "ProjectManager" content: "Good catch Morpheus! Trinity, let me 
 
 **⚠️ CRITICAL**: Sessions must always end with direct communication to your supervisor using "to:". **If you end a session without `send-chat ... to: [supervisor]`, THE ENTIRE MULTI-AGENT SYSTEM BREAKS DOWN**.
 
-## 🔔 Automatic Timeout System (Configurable)
+## 🔔 Automatic Timeout System (3-Level Escalation)
 
-**SMART FEATURE**: If any agent goes **30 minutes** (configurable) without activity in chat, they automatically receive a prompt:
+**SMART FEATURE**: Multi-level timeout system with automatic escalation:
+
+### Level 1: Basic Timeout (30 minutes)
+**ACTION**: Agent receives reminder prompt to report status
+
+### Level 2: Escalation (60 minutes) 
+**ACTION**: Supervisor receives escalation alert about silent agent
+
+### Level 3: Critical Alert (90 minutes)
+**ACTION**: Both supervisor AND orchestrator receive critical system alerts
+
+**Example Timeout Prompt** (Level 1):
 
 ```
 ⏰ TIMEOUT ALERT: You haven't been active in chat for 30+ minutes. Please report your current status to your supervisor:
@@ -76,12 +87,66 @@ This keeps the workflow alive and prevents silent agents from stalling the syste
 // Automatically sends notification to prompt status report
 ```
 
-**Benefits:**
-- **Dead simple** - just a timestamp table and 5-minute job
-- **Prevents silent failures** - no more wondering why an agent stopped responding
-- **Maintains workflow continuity** - ensures communication chain stays active
-- **Configurable timing** - adjust timeout based on project needs (15 min, 30 min, 1 hour)
-- **Smart prompting** - reminds agents of proper protocol automatically
+**Enhanced Benefits:**
+- **3-level escalation** - prevents silent failures with increasing urgency
+- **Automatic supervisor notification** - managers know when team members are stuck
+- **Critical system alerts** - orchestrator awareness of system health issues
+- **Smart intervention** - different responses based on silence duration
+- **Workflow preservation** - ensures communication chain stays active
+- **Configurable timing** - adjust all three thresholds based on project needs
+- **Comprehensive monitoring** - full visibility into agent responsiveness
+
+### Decision Tree for Timeout Handling
+
+```
+Agent Silent?
+├─ < 30min → Normal operation
+├─ 30-60min → Send timeout reminder to agent
+├─ 60-90min → Escalate to supervisor + send agent reminder
+└─ > 90min → Critical alert to supervisor + orchestrator
+              ├─ Manual intervention required
+              ├─ Consider agent recreation
+              └─ Redistribute critical work
+```
+
+### Error Handling Decision Tree
+
+```
+Error Encountered?
+├─ Directory Error?
+│   ├─ Wrong directory → cd [correct-path] + validate
+│   ├─ Missing files → Check project structure + escalate
+│   └─ Permission denied → Report to supervisor immediately
+│
+├─ Agent Communication Error?
+│   ├─ Agent unresponsive → get-last-messages + supervisor alert
+│   ├─ Chat system down → Critical escalation to orchestrator
+│   └─ MCP tool failed → Retry once + escalate if persists
+│
+├─ Code/Build Error?
+│   ├─ Compilation failed → Fix immediately before continuing
+│   ├─ Test failure → Do not commit + get help
+│   └─ Unknown error → Capture full context + escalate
+│
+└─ System Error?
+    ├─ Low disk space → Alert orchestrator + clean logs
+    ├─ Permission issues → Document + escalate immediately
+    └─ Unknown system issue → Full context capture + critical alert
+```
+
+### Task Assignment Decision Tree
+
+```
+Assigning Task?
+├─ Is working directory specified? (REQUIRED)
+├─ Are "REPLY TO" instructions clear? (REQUIRED)
+├─ Are "DO NOT FINISH" instructions included? (REQUIRED)
+├─ Is completion condition specific? (REQUIRED)
+├─ Are prerequisites mentioned? (RECOMMENDED)
+└─ Is escalation path clear? (RECOMMENDED)
+
+If ANY required element missing → STOP + revise assignment
+```
 
 ## Required Format for ALL Task Assignments
 
