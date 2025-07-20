@@ -6,6 +6,83 @@
 
 **THE COMMUNICATION BALL RULE**: The ball of communication MUST start and end with the USER. No agent can end a session without communicating with their supervisor - this includes questions, clarifications, status updates, or completion reports. Back-and-forth communication is encouraged as long as the chain of command is maintained.
 
+## Three Types of Communication - Use "to:" for Better Teamwork!
+
+### 1. Group Chat (No "to:" - Open Collaboration)
+```bash
+send-chat from: "[YourRole]" content: "Team: Anyone know the best approach for handling JWT refresh tokens?"
+# Anyone can respond and help - JUMP IN if you have relevant knowledge!
+```
+
+**🤝 ACTIVE PARTICIPATION ENCOURAGED**: If you see any conversation where you have relevant information, experience, or advice - jump in and help! Even if you weren't directly addressed, good teams share knowledge freely.
+
+### 2. Agent-to-Agent Direct (With "to:" - Focused Collaboration)
+```bash
+send-chat from: "[YourRole]" content: "@AgentName Can you help me with the database schema? I need advice on user relationships." to: "AgentName"
+# Creates direct line of communication for specific help
+```
+
+### 3. Chain of Command (With "to:" - Assignments/Session Endings)
+```bash
+send-chat from: "[YourRole]" content: "[Assignment details] 
+REPLY TO: @[YourRole] when complete.
+DO NOT FINISH without communicating with me." to: "[AgentName]"
+```
+
+**💡 POWERFUL TEAMWORK**: Use "to:" liberally for focused conversations, peer collaboration, knowledge sharing, and coordination. It's not just for assignments - it's for better teamwork!
+
+**🚀 EXAMPLE of Active Participation:**
+```bash
+# Developer asks group question
+send-chat from: "Trinity" content: "Team: Having trouble with Redis connection pooling. Any suggestions?"
+
+# Another developer jumps in to help (even though not directly asked)
+send-chat from: "Morpheus" content: "Trinity: I had the same issue last week! Try increasing max_connections to 50 and timeout to 5000ms. Also check your Redis memory config."
+
+# PM adds coordination help
+send-chat from: "ProjectManager" content: "Good catch Morpheus! Trinity, let me know if you need more Redis resources provisioned."
+```
+
+**Key**: Everyone actively helps when they have relevant knowledge to share!
+
+**⚠️ CRITICAL**: Sessions must always end with direct communication to your supervisor using "to:". **If you end a session without `send-chat ... to: [supervisor]`, THE ENTIRE MULTI-AGENT SYSTEM BREAKS DOWN**.
+
+## 🔔 Automatic Timeout System (Configurable)
+
+**SMART FEATURE**: If any agent goes **30 minutes** (configurable) without activity in chat, they automatically receive a prompt:
+
+```
+⏰ TIMEOUT ALERT: You haven't been active in chat for 30+ minutes. Please report your current status to your supervisor:
+
+- **Developers**: send-chat to "ProjectManager" with current progress
+- **Project Managers**: send-chat to "Orchestrator" with team status  
+- **Orchestrator**: Ask user "What would you like me to do next?"
+
+This keeps the workflow alive and prevents silent agents from stalling the system.
+```
+
+**Simple Implementation:**
+```javascript
+// In .claude-chat.json or separate tracking file
+{
+  "agent_last_notification": {
+    "ProjectManager": "2024-01-15T14:30:00Z",
+    "Trinity": "2024-01-15T14:25:00Z", 
+    "Morpheus": "2024-01-15T14:45:00Z"
+  }
+}
+
+// Job runs every 5 minutes, checks for agents silent > 30 minutes
+// Automatically sends notification to prompt status report
+```
+
+**Benefits:**
+- **Dead simple** - just a timestamp table and 5-minute job
+- **Prevents silent failures** - no more wondering why an agent stopped responding
+- **Maintains workflow continuity** - ensures communication chain stays active
+- **Configurable timing** - adjust timeout based on project needs (15 min, 30 min, 1 hour)
+- **Smart prompting** - reminds agents of proper protocol automatically
+
 ## Required Format for ALL Task Assignments
 
 **EVERY chat message giving orders or assignments MUST include this format:**

@@ -138,6 +138,53 @@ export class MCPAgentServer {
             },
             required: ["agentName"]
           }
+        },
+        {
+          name: "assemble",
+          description: "Prompt the orchestrator to assemble a team for a project",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectName: { type: "string", description: "Name of the project" },
+              projectType: { type: "string", description: "Type of project (web app, API, mobile, etc.)", default: "web app" },
+              teamSize: { type: "number", description: "Number of developers needed", default: 3 },
+              workingDirectory: { type: "string", description: "Full path to project directory" },
+              requirements: { type: "string", description: "Brief overview of project requirements" }
+            },
+            required: ["projectName", "workingDirectory", "requirements"]
+          }
+        },
+        {
+          name: "checkup",
+          description: "Prompt the orchestrator to check team status and take action",
+          inputSchema: {
+            type: "object",
+            properties: {
+              focus: { type: "string", description: "Specific area to check (team status, progress, blockers, etc.)", default: "overall status" }
+            }
+          }
+        },
+        {
+          name: "set-timeout",
+          description: "Configure the agent timeout duration",
+          inputSchema: {
+            type: "object",
+            properties: {
+              minutes: { type: "number", description: "Timeout duration in minutes", default: 30 }
+            },
+            required: ["minutes"]
+          }
+        },
+        {
+          name: "register-agent-activity",
+          description: "Manually register agent activity to reset timeout",
+          inputSchema: {
+            type: "object",
+            properties: {
+              agentName: { type: "string", description: "Name of the agent to register activity for" }
+            },
+            required: ["agentName"]
+          }
         }
       ]
     }));
@@ -165,6 +212,14 @@ export class MCPAgentServer {
           return this.clearAgent(args);
         case "summarize-agent":
           return this.summarizeAgent(args);
+        case "assemble":
+          return this.assembleTeam(args);
+        case "checkup":
+          return this.checkupTeam(args);
+        case "set-timeout":
+          return this.setTimeout(args);
+        case "register-agent-activity":
+          return this.registerAgentActivity(args);
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -511,6 +566,131 @@ ${recentHistoryText}`;
         content: [{
           type: "text",
           text: `Failed to summarize agent "${agentName}": ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async assembleTeam(args: any) {
+    const { projectName, projectType = "web app", teamSize = 3, workingDirectory, requirements } = args;
+    
+    try {
+      // Send a comprehensive team assembly prompt to the orchestrator
+      const assemblyPrompt = `TEAM ASSEMBLY REQUEST:
+
+Project: ${projectName}
+Type: ${projectType}
+Working Directory: ${workingDirectory}
+Team Size: ${teamSize} developers
+Requirements: ${requirements}
+
+Please create a project team by:
+1. Creating a Project Manager with an appropriate theme name
+2. Having the PM create ${teamSize} developers with themed names
+3. Ensure all team members know the working directory: ${workingDirectory}
+4. Brief the team on the project requirements
+5. Begin with requirements specification phase
+
+Remember: Use send-chat for all communication after initial agent creation. The communication ball must start and end with the user.`;
+
+      // Send to orchestrator via tmux (using existing notification system)
+      await sharedChat.sendChatMessage('SYSTEM', assemblyPrompt, 'Orchestrator');
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Team assembly request sent to Orchestrator for project "${projectName}". The orchestrator should now create a project team and begin work.`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to send assembly request: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async checkupTeam(args: any) {
+    const { focus = "overall status" } = args;
+    
+    try {
+      const checkupPrompt = `TEAM CHECKUP REQUEST:
+
+Focus: ${focus}
+
+Please check the current status of all active teams and projects by:
+1. Reading the shared chat for recent activity
+2. Identifying any silent or stuck agents
+3. Checking for blockers or issues needing escalation
+4. Taking appropriate action to move projects forward
+5. Reporting back to me with a summary of:
+   - Current project status
+   - Any issues found
+   - Actions taken
+   - Next steps needed
+
+Use the chat system to coordinate with Project Managers and get status updates. Remember to ask me "What would you like me to do next?" when complete.`;
+
+      // Send to orchestrator
+      await sharedChat.sendChatMessage('SYSTEM', checkupPrompt, 'Orchestrator');
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Team checkup request sent to Orchestrator (focus: ${focus}). The orchestrator should now assess team status and report back.`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to send checkup request: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async setTimeout(args: any) {
+    const { minutes } = args;
+    
+    try {
+      sharedChat.setTimeoutMinutes(minutes);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Agent timeout duration set to ${minutes} minutes. Agents will be prompted to report status if silent for more than ${minutes} minutes.`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to set timeout: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
+    }
+  }
+
+  private async registerAgentActivity(args: any) {
+    const { agentName } = args;
+    
+    try {
+      sharedChat.registerAgentActivity(agentName);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `Registered activity for agent "${agentName}" - timeout timer reset.`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Failed to register activity: ${error instanceof Error ? error.message : String(error)}`
         }]
       };
     }
