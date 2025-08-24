@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # MailHog - Email testing and SMTP server
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: email-test-mailhog
+    ports:
+      - "1025:1025"   # SMTP port
+      - "8025:8025"   # Web UI port
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/maildir
+    volumes:
+      - mailhog_data:/maildir
+    networks:
+      - email-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # SMTP relay for Migadu integration testing
+  smtp-relay:
+    image: namshi/smtp:latest
+    container_name: email-test-smtp-relay
+    environment:
+      - SMARTHOST=mail.migadu.com:587
+      - SMTP_USERNAME=${MIGADU_SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${MIGADU_SMTP_PASSWORD:-}
+      - RELAY_NETWORKS=:192.168.0.0/16:10.0.0.0/8:172.16.0.0/12
+    ports:
+      - "2525:25"
+    networks:
+      - email-network
+    restart: unless-stopped
+    depends_on:
+      - mailhog
+
+  # Email testing client container
+  email-client:
+    image: alpine:latest
+    container_name: email-test-client
+    volumes:
+      - ./email-tests:/tests
+      - ./logs:/logs
+    networks:
+      - email-network
+    command: tail -f /dev/null
+    depends_on:
+      - mailhog
+      - smtp-relay
+
+volumes:
+  mailhog_data:
+    driver: local
+
+networks:
+  email-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

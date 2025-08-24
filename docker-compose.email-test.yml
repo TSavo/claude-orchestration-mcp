@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # MailHog - SMTP testing server with web UI
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: email-test-mailhog
+    ports:
+      - "1025:1025"   # SMTP port
+      - "8025:8025"   # Web UI port
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/maildir
+    volumes:
+      - mailhog_data:/maildir
+    networks:
+      - email-test-network
+    restart: unless-stopped
+
+  # SMTP Relay for Migadu testing
+  smtp-relay:
+    image: juanluisbaptiste/postfix:latest
+    container_name: email-test-smtp-relay
+    environment:
+      - SMTP_SERVER=smtp.migadu.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=${MIGADU_USERNAME:-}
+      - SMTP_PASSWORD=${MIGADU_PASSWORD:-}
+      - SERVER_HOSTNAME=localhost
+      - SMTP_NETWORKS=192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    ports:
+      - "2525:25"     # Alternative SMTP port
+    networks:
+      - email-test-network
+    restart: unless-stopped
+    depends_on:
+      - mailhog
+
+  # Email testing service
+  email-tester:
+    image: node:18-alpine
+    container_name: email-test-service
+    working_dir: /app
+    volumes:
+      - ./email-testing:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - MIGADU_HOST=smtp.migadu.com
+      - MIGADU_PORT=587
+      - MIGADU_USERNAME=${MIGADU_USERNAME:-}
+      - MIGADU_PASSWORD=${MIGADU_PASSWORD:-}
+    networks:
+      - email-test-network
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - mailhog
+      - smtp-relay
+    restart: unless-stopped
+
+volumes:
+  mailhog_data:
+    driver: local
+
+networks:
+  email-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
